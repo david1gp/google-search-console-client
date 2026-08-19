@@ -1,0 +1,73 @@
+{
+  "name": "@adaptive-ds/google-search-console-client",
+  "version": "0.1.0",
+  "description": "TypeScript Result-based API client for Google Search Console API. Type-safe, Valibot-validated, and modern.",
+  "keywords": [
+    "google-search-console",
+    "gsc",
+    "search-console",
+    "seo",
+    "google-api",
+    "api-client",
+    "typescript",
+    "result",
+    "valibot"
+  ],
+  "homepage": "https://github.com/david1gp/google-search-console-client",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/david1gp/google-search-console-client.git"
+  },
+  "bugs": {
+    "url": "https://github.com/david1gp/google-search-console-client/issues"
+  },
+  "license": "MIT",
+  "type": "module",
+  "private": false,
+  "main": "dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "dev": "bun test --watch",
+    "test": "bun test",
+    "test:w": "bun test --watch",
+    "build": "rm -rf ./dist && bun tsc -p ./tsconfig.lib.json",
+    "check": "bun tsc --noEmit",
+    "release": "bash ./ops/release.sh",
+    "update": "bun update",
+    "format": "biome format --write src test package.json tsconfig.json tsconfig.lib.json biome.json",
+    "clean": "rm -rf ./dist",
+    "reset": "rm -rf ./node_modules"
+  },
+  "peerDependencies": {
+    "@adaptive-ds/result": "^0.6.0",
+    "valibot": "^1.2.0"
+  },
+  "devDependencies": {
+    "@adaptive-ds/result": "^0.6.0",
+    "@biomejs/biome": "^2.5.2",
+    "@types/bun": "^1.3.13",
+    "typescript": "^6.0.3",
+    "valibot": "^1.2.0"
+  },
+  "prettier": {
+    "semi": false,
+    "printWidth": 120,
+    "trailingComma": "all"
+  },
+  "imports": {
+    "#result": "@adaptive-ds/result"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js"
+    }
+  },
+  "files": [
+    "dist"
+  ]
+}

@@ -1,0 +1,98 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Bun package managers
+bun.lock
+bun.lockb
+
+# Output
+out
+dist
+*.tgz
+/build/
+
+# Code coverage
+coverage
+*.lcov
+
+# Logs
+logs
+_.log
+report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+
+# Finder (MacOS) folder config
+.DS_Store
+
+# Unlighthouse
+/.unlighthouse/
+
+# Next.js
+.next
+
+# Turbo
+.turbo
+
+# Dotenv secrets
+.env
+.env.*
+
+# Cache
+.eslintcache
+.cache
+*.tsbuildinfo
+
+# IntelliJ based IDEs
+.gradle
+*.iml
+.idea
+
+# Package manager debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Ignore package manager lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+bun.lock
+
+# vscode
+.vscode
+*.code-workspace
+
+# Vite
+vite.config.d.ts
+vite.config.js
+
+# Data
+/data
+
+# Convex
+convex/_generated
+
+## Gemini cli
+.sentry-native
+.attach_*
+
+# Cloudflare / Deployment / Wrangler
+wrangler.*
+
+# Astro
+.astro
+astro
+
+# npm publishing
+.npmrc
+
+# ai, ethereal and auto generated
+.roo/rules-code
+AGENTS.md
+
+# images
+/public-images
+/public-image-versions

@@ -1,0 +1,4 @@
+# Line endings
+text eol=lf
+# Encoding format
+* text=auto encoding=UTF-8

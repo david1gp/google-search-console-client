@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "allowImportingTsExtensions": false,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "lib": ["esnext", "dom"],
+    "types": ["bun"],
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./build/tsconfig.tsbuildinfo",
+    "allowJs": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "useDefineForClassFields": true,
+    "noUncheckedSideEffectImports": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src", "test"],
+  "exclude": [".github", ".roo", ".idea", ".vscode", "changelogs", "build", "dist", "node_modules", "ops"]
+}
