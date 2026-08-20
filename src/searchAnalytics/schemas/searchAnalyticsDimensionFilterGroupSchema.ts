@@ -3,7 +3,7 @@ import { searchAnalyticsDimensionFilterSchema } from "./searchAnalyticsDimension
 
 export const searchAnalyticsDimensionFilterGroupSchema = v.object({
   filters: v.optional(v.array(searchAnalyticsDimensionFilterSchema)),
-  groupType: v.optional(v.picklist(["AND"])),
+  groupType: v.optional(v.picklist(["and"])),
 })
 
 export type SearchAnalyticsDimensionFilterGroup = v.InferOutput<typeof searchAnalyticsDimensionFilterGroupSchema>

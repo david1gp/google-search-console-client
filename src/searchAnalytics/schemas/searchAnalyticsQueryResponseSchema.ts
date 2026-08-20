@@ -4,7 +4,7 @@ import { searchAnalyticsRowSchema } from "./searchAnalyticsRowSchema.js"
 
 export const searchAnalyticsQueryResponseSchema = v.object({
   rows: v.optional(v.array(searchAnalyticsRowSchema)),
-  responseAggregationType: v.optional(v.picklist(["AUTO", "BY_PROPERTY", "BY_PAGE", "BY_NEWS_SHOWCASE_PANEL"])),
+  responseAggregationType: v.optional(v.picklist(["auto", "byNewsShowcasePanel", "byPage", "byProperty"])),
   metadata: v.optional(searchAnalyticsMetadataSchema),
 })
 

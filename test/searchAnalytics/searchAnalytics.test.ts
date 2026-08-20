@@ -23,26 +23,26 @@ describe("Search Analytics endpoint", () => {
       siteUrl: "https://example.com/",
       startDate: "2026-08-01",
       endDate: "2026-08-15",
-      dimensions: ["DATE", "QUERY", "PAGE", "COUNTRY", "DEVICE", "SEARCH_APPEARANCE", "HOUR"],
-      type: "WEB",
-      searchType: "GOOGLE_NEWS",
+      dimensions: ["date", "query", "page", "country", "device", "searchAppearance", "hour"],
+      type: "web",
+      searchType: "googleNews",
       dimensionFilterGroups: [
         {
-          groupType: "AND",
-          filters: [{ dimension: "QUERY", operator: "INCLUDING_REGEX", expression: "buy" }],
+          groupType: "and",
+          filters: [{ dimension: "query", operator: "includingRegex", expression: "buy" }],
         },
       ],
-      aggregationType: "BY_PAGE",
+      aggregationType: "byPage",
       startRow: 100,
       rowLimit: 25000,
-      dataState: "HOURLY_ALL",
+      dataState: "hourly_all",
     } as const
 
     expect(v.safeParse(searchAnalyticsQueryRequestSchema, request).success).toBe(true)
     expect(
       v.safeParse(searchAnalyticsDimensionFilterSchema, {
-        dimension: "PAGE",
-        operator: "NOT_EQUALS",
+        dimension: "page",
+        operator: "notEquals",
         expression: "https://example.com/",
       }).success,
     ).toBe(true)
@@ -55,15 +55,15 @@ describe("Search Analytics endpoint", () => {
     expect(v.safeParse(searchAnalyticsQueryRequestSchema, { ...request, startRow: -1 }).success).toBe(false)
     expect(
       v.safeParse(searchAnalyticsDimensionFilterSchema, {
-        dimension: "DATE",
-        operator: "EQUALS",
+        dimension: "date",
+        operator: "equals",
         expression: "2026-08-01",
       }).success,
     ).toBe(false)
 
     const response = v.safeParse(searchAnalyticsQueryResponseSchema, {
       rows: [{ keys: ["query"] }],
-      responseAggregationType: "BY_PAGE",
+      responseAggregationType: "byPage",
       metadata: {
         firstIncompleteDate: "2026-08-14",
         firstIncompleteHour: "2026-08-14T12:00:00-07:00",
@@ -72,14 +72,15 @@ describe("Search Analytics endpoint", () => {
     expect(response.success).toBe(true)
     if (response.success) {
       expect(response.output.rows?.[0]?.clicks).toBeUndefined()
+      expect(response.output.responseAggregationType).toBe("byPage")
       expect(response.output.metadata?.firstIncompleteDate).toBe("2026-08-14")
     }
     const emptyResponse = v.safeParse(searchAnalyticsQueryResponseSchema, {})
     expect(emptyResponse.success).toBe(true)
     if (emptyResponse.success) expect(emptyResponse.output).toEqual({})
     expect(v.safeParse(searchAnalyticsQueryResponseSchema, { responseAggregationType: "UNKNOWN" }).success).toBe(false)
-    expect(v.safeParse(searchAnalyticsQueryResponseSchema, { responseAggregationType: "byPage" }).success).toBe(false)
-    expect(v.safeParse(searchAnalyticsQueryRequestSchema, { ...request, aggregationType: "byPage" }).success).toBe(
+    expect(v.safeParse(searchAnalyticsQueryResponseSchema, { responseAggregationType: "BY_PAGE" }).success).toBe(false)
+    expect(v.safeParse(searchAnalyticsQueryRequestSchema, { ...request, aggregationType: "BY_PAGE" }).success).toBe(
       false,
     )
   })
@@ -95,19 +96,19 @@ describe("Search Analytics endpoint", () => {
       expect(JSON.parse(init?.body as string)).toEqual({
         startDate: "2026-08-01",
         endDate: "2026-08-15",
-        dimensions: ["QUERY"],
-        type: "WEB",
-        searchType: "WEB",
+        dimensions: ["query"],
+        type: "web",
+        searchType: "web",
         dimensionFilterGroups: [
           {
-            groupType: "AND",
-            filters: [{ dimension: "QUERY", operator: "CONTAINS", expression: "buy" }],
+            groupType: "and",
+            filters: [{ dimension: "query", operator: "contains", expression: "buy" }],
           },
         ],
-        aggregationType: "AUTO",
+        aggregationType: "auto",
         startRow: 10,
         rowLimit: 100,
-        dataState: "FINAL",
+        dataState: "final",
       })
       return new Response(JSON.stringify({ rows: [{ keys: ["buy shoes"], clicks: 3 }] }))
     })
@@ -116,19 +117,19 @@ describe("Search Analytics endpoint", () => {
       siteUrl,
       startDate: "2026-08-01",
       endDate: "2026-08-15",
-      dimensions: ["QUERY"],
-      type: "WEB",
-      searchType: "WEB",
+      dimensions: ["query"],
+      type: "web",
+      searchType: "web",
       dimensionFilterGroups: [
         {
-          groupType: "AND",
-          filters: [{ dimension: "QUERY", operator: "CONTAINS", expression: "buy" }],
+          groupType: "and",
+          filters: [{ dimension: "query", operator: "contains", expression: "buy" }],
         },
       ],
-      aggregationType: "AUTO",
+      aggregationType: "auto",
       startRow: 10,
       rowLimit: 100,
-      dataState: "FINAL",
+      dataState: "final",
     })
 
     expect(result.success).toBe(true)

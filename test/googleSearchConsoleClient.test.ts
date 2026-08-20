@@ -36,7 +36,7 @@ describe("googleSearchConsoleClient", () => {
       expect(headers.get("Accept")).toBe("application/json")
       return new Response(
         JSON.stringify({
-          siteEntry: [{ siteUrl: "https://example.com/", permissionLevel: "SITE_OWNER" }],
+          siteEntry: [{ siteUrl: "https://example.com/", permissionLevel: "siteOwner" }],
         }),
         { status: 200 },
       )
@@ -85,7 +85,7 @@ describe("googleSearchConsoleClient", () => {
       siteUrl: "https://example.com/",
       startDate: "2026-08-01",
       endDate: "2026-08-15",
-      dimensions: ["QUERY"],
+      dimensions: ["query"],
     })
 
     expect(res.success).toBe(true)
@@ -218,7 +218,7 @@ describe("googleSearchConsoleClient", () => {
         authorizationHeaders.push(new Headers(init?.headers).get("Authorization") ?? "")
         if (apiRequestCount === 1) return new Response("Unauthorized", { status: 401, statusText: "Unauthorized" })
         return new Response(
-          JSON.stringify({ siteEntry: [{ siteUrl: "https://example.com/", permissionLevel: "SITE_OWNER" }] }),
+          JSON.stringify({ siteEntry: [{ siteUrl: "https://example.com/", permissionLevel: "siteOwner" }] }),
           { status: 200 },
         )
       },

@@ -8,13 +8,13 @@ describe("Search Analytics CLI commands", () => {
     expect(searchAnalyticsRouteMap.getAllEntries().map((entry) => entry.name.original)).toEqual(["query"])
   })
 
-  it("accepts the Google JSON aggregation enum casing", async () => {
+  it("accepts and forwards the REST enum casing", async () => {
     let requestBody: unknown
     const server = Bun.serve({
       port: 0,
       async fetch(request) {
         requestBody = await request.json()
-        return Response.json({ rows: [], responseAggregationType: "BY_PAGE" })
+        return Response.json({ rows: [], responseAggregationType: "byNewsShowcasePanel" })
       },
     })
 
@@ -29,20 +29,45 @@ describe("Search Analytics CLI commands", () => {
         "test-token",
         "--base-url",
         `http://127.0.0.1:${server.port}`,
+        "--dimensions",
+        "date,query,page,country,device,searchAppearance,hour",
+        "--type",
+        "googleNews",
+        "--search-type",
+        "discover",
+        "--dimension-filter-groups",
+        JSON.stringify([
+          {
+            groupType: "and",
+            filters: [{ dimension: "searchAppearance", operator: "includingRegex", expression: "NEWS_SHOWCASE" }],
+          },
+        ]),
         "--aggregation-type",
-        "BY_PAGE",
+        "byNewsShowcasePanel",
+        "--data-state",
+        "hourly_all",
       ])
 
       expect(result.exitCode).toBe(0)
       expect(result.stderr).toBe("")
       expect(JSON.parse(result.stdout)).toEqual({
         success: true,
-        data: { rows: [], responseAggregationType: "BY_PAGE" },
+        data: { rows: [], responseAggregationType: "byNewsShowcasePanel" },
       })
       expect(requestBody).toEqual({
         startDate: "2026-08-01",
         endDate: "2026-08-02",
-        aggregationType: "BY_PAGE",
+        dimensions: ["date", "query", "page", "country", "device", "searchAppearance", "hour"],
+        type: "googleNews",
+        searchType: "discover",
+        dimensionFilterGroups: [
+          {
+            groupType: "and",
+            filters: [{ dimension: "searchAppearance", operator: "includingRegex", expression: "NEWS_SHOWCASE" }],
+          },
+        ],
+        aggregationType: "byNewsShowcasePanel",
+        dataState: "hourly_all",
       })
     } finally {
       server.stop()

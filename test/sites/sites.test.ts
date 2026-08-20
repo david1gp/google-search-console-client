@@ -21,14 +21,14 @@ describe("Sites endpoints", () => {
 
   it("validates site schemas", () => {
     expect(
-      v.safeParse(siteEntrySchema, { siteUrl: "sc-domain:example.com", permissionLevel: "SITE_OWNER" }).success,
+      v.safeParse(siteEntrySchema, { siteUrl: "sc-domain:example.com", permissionLevel: "siteOwner" }).success,
     ).toBe(true)
-    expect(v.safeParse(siteEntrySchema, { siteUrl: "not-a-site", permissionLevel: "SITE_OWNER" }).success).toBe(false)
+    expect(v.safeParse(siteEntrySchema, { siteUrl: "not-a-site", permissionLevel: "siteOwner" }).success).toBe(false)
     expect(v.safeParse(siteEntrySchema, {}).success).toBe(true)
     const emptyResponse = v.safeParse(sitesListResponseSchema, {})
     expect(emptyResponse.success).toBe(true)
     if (emptyResponse.success) expect(emptyResponse.output).toEqual({})
-    expect(v.safeParse(siteEntrySchema, { permissionLevel: "siteOwner" }).success).toBe(false)
+    expect(v.safeParse(siteEntrySchema, { permissionLevel: "SITE_OWNER" }).success).toBe(false)
   })
 
   it("lists sites with the shared OAuth transport", async () => {
@@ -37,7 +37,7 @@ describe("Sites endpoints", () => {
       expect(init?.method).toBe("GET")
       expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer test-token")
       return new Response(
-        JSON.stringify({ siteEntry: [{ siteUrl: "https://example.com/", permissionLevel: "SITE_OWNER" }] }),
+        JSON.stringify({ siteEntry: [{ siteUrl: "https://example.com/", permissionLevel: "siteOwner" }] }),
       )
     })
 
@@ -45,7 +45,7 @@ describe("Sites endpoints", () => {
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.siteEntry?.[0]?.siteUrl).toBe("https://example.com/")
-      expect(result.data.siteEntry?.[0]?.permissionLevel).toBe("SITE_OWNER")
+      expect(result.data.siteEntry?.[0]?.permissionLevel).toBe("siteOwner")
     }
   })
 
@@ -55,7 +55,7 @@ describe("Sites endpoints", () => {
     const client = clientCreate(async (input, init) => {
       calls.push(`${init?.method}:${input.toString()}`)
       if (init?.method === "GET") {
-        return new Response(JSON.stringify({ siteUrl: "https://example.com/", permissionLevel: "SITE_OWNER" }))
+        return new Response(JSON.stringify({ siteUrl: "https://example.com/", permissionLevel: "siteOwner" }))
       }
       return new Response(null, { status: 204 })
     })

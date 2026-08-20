@@ -10,17 +10,17 @@ import { googleSearchConsoleCliOptions } from "../googleSearchConsoleCliOptions.
 import type { GoogleSearchConsoleCommandContext } from "../googleSearchConsoleCommandContext.js"
 
 const searchAnalyticsDimensionValues = [
-  "DATE",
-  "QUERY",
-  "PAGE",
-  "COUNTRY",
-  "DEVICE",
-  "SEARCH_APPEARANCE",
-  "HOUR",
+  "date",
+  "query",
+  "page",
+  "country",
+  "device",
+  "searchAppearance",
+  "hour",
 ] as const
-const searchAnalyticsSearchTypeValues = ["WEB", "IMAGE", "VIDEO", "NEWS", "DISCOVER", "GOOGLE_NEWS"] as const
-const searchAnalyticsAggregationTypeValues = ["AUTO", "BY_PROPERTY", "BY_PAGE", "BY_NEWS_SHOWCASE_PANEL"] as const
-const searchAnalyticsDataStateValues = ["DATA_STATE_UNSPECIFIED", "FINAL", "ALL", "HOURLY_ALL"] as const
+const searchAnalyticsSearchTypeValues = ["discover", "googleNews", "news", "image", "video", "web"] as const
+const searchAnalyticsAggregationTypeValues = ["auto", "byNewsShowcasePanel", "byPage", "byProperty"] as const
+const searchAnalyticsDataStateValues = ["all", "final", "hourly_all"] as const
 
 type SearchAnalyticsQueryCommandFlags = GoogleSearchConsoleCliFlags & {
   dimensions?: readonly (typeof searchAnalyticsDimensionValues)[number][]
