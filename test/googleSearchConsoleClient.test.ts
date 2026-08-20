@@ -2,38 +2,41 @@ import { describe, expect, it } from "bun:test"
 import {
   googleSearchConsoleClientCreate,
   searchAnalyticsQuery,
-  sitemapGet,
   sitemapsList,
-  sitemapSubmit,
   sitesList,
   urlInspectionIndexInspect,
 } from "../src/index.js"
 
 describe("googleSearchConsoleClient", () => {
+  const clientCreate = (config: Parameters<typeof googleSearchConsoleClientCreate>[0]) => {
+    const result = googleSearchConsoleClientCreate(config)
+    if (!result.success) throw new Error(result.errorMessage)
+    return result.data
+  }
+
   it("creates a client instance correctly", () => {
-    const client = googleSearchConsoleClientCreate({
+    const client = clientCreate({
       accessToken: "test-token",
     })
     expect(client.config.accessToken).toBe("test-token")
-    expect(client.config.baseUrl).toBe("https://www.googleapis.com/webmasters/v3")
+    expect(client.config.baseUrl).toBe("https://searchconsole.googleapis.com/webmasters/v3")
   })
 
   it("lists sites successfully with mocked fetch", async () => {
     const mockFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      expect(input.toString()).toBe("https://www.googleapis.com/webmasters/v3/sites")
-      expect(init?.headers).toEqual({
-        Authorization: "Bearer test-token",
-        Accept: "application/json",
-      })
+      expect(input.toString()).toBe("https://searchconsole.googleapis.com/webmasters/v3/sites")
+      const headers = new Headers(init?.headers)
+      expect(headers.get("Authorization")).toBe("Bearer test-token")
+      expect(headers.get("Accept")).toBe("application/json")
       return new Response(
         JSON.stringify({
-          siteEntry: [{ siteUrl: "https://example.com/", permissionLevel: "siteOwner" }],
+          siteEntry: [{ siteUrl: "https://example.com/", permissionLevel: "SITE_OWNER" }],
         }),
         { status: 200 },
       )
     }
 
-    const client = googleSearchConsoleClientCreate({
+    const client = clientCreate({
       accessToken: "test-token",
       fetch: mockFetch,
     })
@@ -41,8 +44,8 @@ describe("googleSearchConsoleClient", () => {
     const res = await sitesList(client)
     expect(res.success).toBe(true)
     if (res.success) {
-      expect(res.data.siteEntry.length).toBe(1)
-      expect(res.data.siteEntry[0]?.siteUrl).toBe("https://example.com/")
+      expect(res.data.siteEntry?.length).toBe(1)
+      expect(res.data.siteEntry?.[0]?.siteUrl).toBe("https://example.com/")
     }
   })
 
@@ -67,7 +70,7 @@ describe("googleSearchConsoleClient", () => {
       )
     }
 
-    const client = googleSearchConsoleClientCreate({
+    const client = clientCreate({
       accessToken: "test-token",
       fetch: mockFetch,
     })
@@ -76,7 +79,7 @@ describe("googleSearchConsoleClient", () => {
       siteUrl: "https://example.com/",
       startDate: "2026-08-01",
       endDate: "2026-08-15",
-      dimensions: ["query"],
+      dimensions: ["QUERY"],
     })
 
     expect(res.success).toBe(true)
@@ -108,7 +111,7 @@ describe("googleSearchConsoleClient", () => {
       )
     }
 
-    const client = googleSearchConsoleClientCreate({
+    const client = clientCreate({
       accessToken: "test-token",
       fetch: mockFetch,
     })
@@ -131,7 +134,7 @@ describe("googleSearchConsoleClient", () => {
       return new Response("Unauthorized", { status: 401, statusText: "Unauthorized" })
     }
 
-    const client = googleSearchConsoleClientCreate({
+    const client = clientCreate({
       accessToken: "test-token",
       fetch: mockFetch,
     })
@@ -140,7 +143,7 @@ describe("googleSearchConsoleClient", () => {
     expect(res.success).toBe(false)
     if (!res.success) {
       expect(res.op).toBe("sitesList")
-      expect(res.errorMessage).toContain("401")
+      expect(res.errorMessage).toBe("Unauthorized")
     }
   })
 })
