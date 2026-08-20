@@ -1,13 +1,6 @@
 # @adaptive-ds/google-search-console-client
 
-TypeScript client for the **Google Search Console API**. Built with strict type safety, **`Result` pattern** error handling, and runtime **Valibot** validation.
-
-## Features
-
-- 🛡️ **Result Pattern**: Never throws runtime exceptions; functions return `Result<T>` (`ResultOk<T>` or `ResultErr`).
-- 🔍 **Strict Runtime Validation**: Powered by Valibot schemas for robust type derivations and input/output validation.
-- ⚡ **Lightweight & Modern**: Zero bloated dependencies, ESM-native, fast build and test runtime using Bun.
-- 🎯 **Domain-driven**: Clear bounded contexts for sites, search analytics query, sitemaps, and URL inspection.
+Validated TypeScript client and JSON CLI for the **Google Search Console API**. Library operations return `Result<T>` and validate inputs and responses with Valibot.
 
 ## Installation
 
@@ -15,13 +8,18 @@ TypeScript client for the **Google Search Console API**. Built with strict type 
 bun add @adaptive-ds/google-search-console-client @adaptive-ds/result valibot
 ```
 
-or via npm:
-
 ```bash
 npm install @adaptive-ds/google-search-console-client @adaptive-ds/result valibot
 ```
 
-## Quick Start
+The package also installs the `google-search-console` executable and its CLI runtime dependency.
+
+## Authentication
+
+The library accepts separate credentials for Google's OAuth and API-key authentication:
+
+- `accessToken`: OAuth 2.0 bearer token for Sites, Sitemaps, Search Analytics, URL Inspection, and Mobile-Friendly Testing.
+- `mobileFriendlyApiKey`: API key for Mobile-Friendly Testing. If both Mobile-Friendly credentials are configured, the API key is selected.
 
 ```typescript
 import {
@@ -29,58 +27,88 @@ import {
   searchAnalyticsQuery,
 } from "@adaptive-ds/google-search-console-client"
 
-const client = googleSearchConsoleClientCreate({
-  accessToken: process.env.GOOGLE_ACCESS_TOKEN!,
+const clientResult = googleSearchConsoleClientCreate({
+  accessToken: process.env.GOOGLE_SEARCH_CONSOLE_ACCESS_TOKEN,
 })
 
-// Query search performance metrics
-const result = await searchAnalyticsQuery(client, {
+if (!clientResult.success) {
+  console.error(clientResult.errorMessage)
+  process.exit(1)
+}
+
+const result = await searchAnalyticsQuery(clientResult.data, {
   siteUrl: "https://example.com/",
   startDate: "2026-08-01",
   endDate: "2026-08-15",
-  dimensions: ["query", "page"],
+  dimensions: ["QUERY", "PAGE"],
   rowLimit: 10,
 })
 
 if (!result.success) {
-  console.error(`Error (${result.op}):`, result.errorMessage)
+  console.error(`Error (${result.op}): ${result.errorMessage}`)
   process.exit(1)
 }
 
-console.log("Search Analytics Rows:", result.data.rows)
+console.log(result.data.rows)
 ```
 
-## API Overview
+## CLI
 
-### Sites
+After installation, credentials can be supplied by flags, environment variables, or a dotenv-style file:
 
-- `sitesList(client)` - List all verified sites
-- `siteGet(client, siteUrl)` - Get details for a specific site
-- `siteAdd(client, siteUrl)` - Add a new site property
-- `siteDelete(client, siteUrl)` - Remove a site property
+```bash
+export GOOGLE_SEARCH_CONSOLE_ACCESS_TOKEN="oauth-token"
+google-search-console sites list
+google-search-console search-analytics query https://example.com/ 2026-08-01 2026-08-15 --dimensions QUERY,PAGE
+```
 
-### Search Analytics
+Credential and configuration options:
 
-- `searchAnalyticsQuery(client, query)` - Query search traffic metrics (clicks, impressions, CTR, position)
+- `--access-token`, `GOOGLE_SEARCH_CONSOLE_ACCESS_TOKEN`, or `GOOGLE_ACCESS_TOKEN`
+- `--mobile-friendly-api-key` (or compatibility alias `--api-key`), `GOOGLE_SEARCH_CONSOLE_MOBILE_FRIENDLY_API_KEY`, `GOOGLE_SEARCH_CONSOLE_API_KEY`, or `GOOGLE_API_KEY`
+- `--env-file <path>` to load either credential from a dotenv-style file
+- `--base-url <url>` / `GOOGLE_SEARCH_CONSOLE_BASE_URL` and `--url-inspection-base-url <url>` / `GOOGLE_SEARCH_CONSOLE_URL_INSPECTION_BASE_URL` for endpoint testing
 
-### Sitemaps
+Commands:
 
-- `sitemapsList(client, siteUrl)` - List submitted sitemaps for a site
-- `sitemapGet(client, siteUrl, feedpath)` - Get status and details of a specific sitemap
-- `sitemapSubmit(client, siteUrl, feedpath)` - Submit a sitemap
-- `sitemapDelete(client, siteUrl, feedpath)` - Delete a sitemap
+```text
+google-search-console sites list
+google-search-console sites get <site-url>
+google-search-console sites add <site-url>
+google-search-console sites delete <site-url>
+google-search-console sitemaps list <site-url> [sitemap-index]
+google-search-console sitemaps get <site-url> <sitemap-url>
+google-search-console sitemaps submit <site-url> <sitemap-url>
+google-search-console sitemaps delete <site-url> <sitemap-url>
+google-search-console search-analytics query <site-url> <start-date> <end-date>
+google-search-console url-inspection inspect <inspection-url> <site-url>
+google-search-console mobile-friendly-test run <url>
+```
 
-### URL Inspection
+Use `--help` on the executable or command for all optional flags. Successful results are JSON on stdout; `ResultErr` values are JSON on stderr and exit with status `1`.
 
-- `urlInspectionIndexInspect(client, inspectionRequest)` - Inspect URL indexation status
+## API routes
 
-## Scripts
+All routes use `https://searchconsole.googleapis.com` by default. Site and sitemap URLs are encoded by the client.
 
-- `bun run dev` - Run tests in watch mode
-- `bun run test` - Run unit tests
-- `bun run build` - Type-check and compile to `./dist`
-- `bun run format` - Format code with Biome
-- `bun run release` - Automated changelog generation & GitHub release
+| Library operation | Method and route | Auth |
+| --- | --- | --- |
+| `sitesList`, `siteGet`, `siteAdd`, `siteDelete` | `GET /webmasters/v3/sites`, `GET/PUT/DELETE /webmasters/v3/sites/{siteUrl}` | OAuth |
+| `sitemapsList` | `GET /webmasters/v3/sites/{siteUrl}/sitemaps` (`sitemapIndex` is optional) | OAuth |
+| `sitemapGet`, `sitemapSubmit`, `sitemapDelete` | `GET/PUT/DELETE /webmasters/v3/sites/{siteUrl}/sitemaps/{feedpath}` | OAuth |
+| `searchAnalyticsQuery` | `POST /webmasters/v3/sites/{siteUrl}/searchAnalytics/query` | OAuth |
+| `urlInspectionIndexInspect` | `POST /v1/urlInspection/index:inspect` | OAuth |
+| `mobileFriendlyTestRun` | `POST /v1/urlTestingTools/mobileFriendlyTest:run` (or `?key={apiKey}`) | OAuth or API key |
+
+The root module exports the client, endpoint functions, schemas, and derived types. Endpoint-specific modules are also available under `sites/`, `sitemaps/`, `searchAnalytics/`, `urlInspection/`, and `mobileFriendlyTest/`.
+
+## Development
+
+- `bun run format` - Format source and tests with Biome
+- `bun run check` - Type-check source and tests
+- `bun run test` - Build and run tests
+- `bun run build` - Compile declarations and ESM output to `dist/`
+- `bun run release` - Generate a changelog and GitHub release
 
 ## License
 
