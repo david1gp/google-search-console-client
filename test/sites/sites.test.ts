@@ -20,9 +20,9 @@ describe("Sites endpoints", () => {
   }
 
   it("validates site schemas", () => {
-    expect(
-      v.safeParse(siteEntrySchema, { siteUrl: "sc-domain:example.com", permissionLevel: "siteOwner" }).success,
-    ).toBe(true)
+    for (const permissionLevel of ["siteFullUser", "siteOwner", "siteRestrictedUser", "siteUnverifiedUser"] as const) {
+      expect(v.safeParse(siteEntrySchema, { siteUrl: "sc-domain:example.com", permissionLevel }).success).toBe(true)
+    }
     expect(v.safeParse(siteEntrySchema, { siteUrl: "not-a-site", permissionLevel: "siteOwner" }).success).toBe(false)
     expect(v.safeParse(siteEntrySchema, {}).success).toBe(true)
     const emptyResponse = v.safeParse(sitesListResponseSchema, {})
