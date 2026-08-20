@@ -2,6 +2,8 @@ import * as v from "valibot"
 import { createResult, createResultError, type Result } from "#result"
 import type { GoogleSearchConsoleClient } from "./GoogleSearchConsoleClient.js"
 import { googleApiErrorResultCreate } from "./googleApiErrorResultCreate.js"
+import { googleSearchConsoleAccessTokenRedact } from "./googleSearchConsoleAccessTokenRedact.js"
+import { googleSearchConsoleOAuthTokenResolve } from "./googleSearchConsoleOAuthTokenResolve.js"
 import { googleSearchConsoleUrlSchema } from "./googleSearchConsoleUrlSchema.js"
 
 type GoogleSearchConsoleRequestOptions<TSchema extends v.GenericSchema> = {
@@ -22,6 +24,7 @@ export async function googleSearchConsoleRequest<TSchema extends v.GenericSchema
 ): Promise<Result<v.InferOutput<TSchema>>> {
   const { op, path, method = "GET", body, schema } = options
   const auth = options.auth ?? "oauth"
+  const oauthBacked = auth === "oauth" && client.config.accessToken === undefined && client.config.oauth !== undefined
 
   const baseUrl = options.baseUrl ?? client.config.baseUrl
   const parsedBaseUrl = v.safeParse(googleSearchConsoleUrlSchema, baseUrl)
@@ -45,9 +48,20 @@ export async function googleSearchConsoleRequest<TSchema extends v.GenericSchema
   }
   headers.set("Accept", headers.get("Accept") ?? "application/json")
 
+  let accessToken: string | undefined
+  const redactionSecrets = new Set<string>()
+  if (client.config.oauth !== undefined) {
+    redactionSecrets.add(client.config.oauth.clientSecret)
+    redactionSecrets.add(client.config.oauth.refreshToken)
+  }
   if (auth === "oauth") {
-    const accessToken = client.config.accessToken
-    if (accessToken === undefined) return createResultError(op, "accessToken is required for OAuth requests")
+    accessToken = client.config.accessToken
+    if (accessToken === undefined) {
+      const tokenResult = await googleSearchConsoleOAuthTokenResolve(client)
+      if (!tokenResult.success) return { ...tokenResult, op }
+      accessToken = tokenResult.data
+    }
+    redactionSecrets.add(accessToken)
     headers.set("Authorization", `Bearer ${accessToken}`)
   }
 
@@ -71,30 +85,66 @@ export async function googleSearchConsoleRequest<TSchema extends v.GenericSchema
       return createResultError(
         op,
         "Request body serialization failed",
-        error instanceof Error ? error.message : String(error),
+        googleSearchConsoleAccessTokenRedact(redactionSecrets, error instanceof Error ? error.message : String(error)),
       )
     }
   }
 
-  let response: Response
-  try {
-    response = await client.fetch(url, init)
-  } catch (error) {
-    return createResultError(op, "Fetch failed", error instanceof Error ? error.message : String(error))
+  let hasRetried = false
+  while (true) {
+    let response: Response
+    try {
+      response = await client.fetch(url, init)
+    } catch (error) {
+      const errorData = error instanceof Error ? error.message : String(error)
+      return createResultError(op, "Fetch failed", googleSearchConsoleAccessTokenRedact(redactionSecrets, errorData))
+    }
+
+    let text: string
+    try {
+      text = await response.text()
+    } catch (error) {
+      const errorData = error instanceof Error ? error.message : String(error)
+      return createResultError(
+        op,
+        "Reading response failed",
+        googleSearchConsoleAccessTokenRedact(redactionSecrets, errorData),
+      )
+    }
+
+    if (response.status === 401 && oauthBacked && !hasRetried) {
+      hasRetried = true
+      googleSearchConsoleOAuthTokenInvalidate(client, accessToken)
+      const tokenResult = await googleSearchConsoleOAuthTokenResolve(client)
+      if (!tokenResult.success) return { ...tokenResult, op }
+      accessToken = tokenResult.data
+      redactionSecrets.add(accessToken)
+      headers.set("Authorization", `Bearer ${accessToken}`)
+      continue
+    }
+
+    if (!response.ok)
+      return googleApiErrorResultCreate(op, text, response.status, response.statusText, redactionSecrets)
+
+    const parsed =
+      text.length === 0 ? v.safeParse(schema, undefined) : v.safeParse(v.pipe(v.string(), v.parseJson(), schema), text)
+    if (!parsed.success)
+      return createResultError(
+        op,
+        v.summarize(parsed.issues),
+        googleSearchConsoleAccessTokenRedact(redactionSecrets, text),
+      )
+
+    return createResult(parsed.output)
   }
+}
 
-  let text: string
-  try {
-    text = await response.text()
-  } catch (error) {
-    return createResultError(op, "Reading response failed", error instanceof Error ? error.message : String(error))
-  }
-
-  if (!response.ok) return googleApiErrorResultCreate(op, text, response.status, response.statusText)
-
-  const parsed =
-    text.length === 0 ? v.safeParse(schema, undefined) : v.safeParse(v.pipe(v.string(), v.parseJson(), schema), text)
-  if (!parsed.success) return createResultError(op, v.summarize(parsed.issues), text)
-
-  return createResult(parsed.output)
+function googleSearchConsoleOAuthTokenInvalidate(
+  client: GoogleSearchConsoleClient,
+  accessToken: string | undefined,
+): void {
+  const cache = client.oauthTokenCache
+  if (cache === undefined || cache.accessToken !== accessToken) return
+  cache.accessToken = undefined
+  cache.expiresAt = undefined
 }

@@ -46,6 +46,7 @@ export {
   googleSearchConsoleConfigSchema,
 } from "./googleSearchConsoleConfigSchema.js"
 export { googleSearchConsoleRequest } from "./googleSearchConsoleRequest.js"
+export { packageVersion } from "./packageVersion.js"
 export {
   type MobileFriendlyTestBlockedResource,
   type MobileFriendlyTestImage,
@@ -89,6 +90,16 @@ export { googleSearchConsoleBase64Schema } from "./shared/googleSearchConsoleBas
 export { googleSearchConsoleDateSchema } from "./shared/googleSearchConsoleDateSchema.js"
 export { googleSearchConsoleDatetimeSchema } from "./shared/googleSearchConsoleDatetimeSchema.js"
 export type { GoogleSearchConsoleFetch } from "./shared/googleSearchConsoleFetch.js"
+export {
+  type GoogleSearchConsoleOAuthConfig,
+  type GoogleSearchConsoleOAuthConfigInput,
+  googleSearchConsoleOAuthConfigSchema,
+} from "./shared/googleSearchConsoleOAuthConfigSchema.js"
+export { googleSearchConsoleOAuthTokenResolve } from "./shared/googleSearchConsoleOAuthTokenResolve.js"
+export {
+  type GoogleSearchConsoleOAuthTokenResponse,
+  googleSearchConsoleOAuthTokenResponseSchema,
+} from "./shared/googleSearchConsoleOAuthTokenResponseSchema.js"
 export { googleSearchConsoleSiteUrlSchema } from "./shared/googleSearchConsoleSiteUrlSchema.js"
 export { googleSearchConsoleUrlSchema } from "./shared/googleSearchConsoleUrlSchema.js"
 export {

@@ -7,6 +7,7 @@ import { googleSearchConsoleAccessTokenSchema } from "../shared/googleSearchCons
 import { googleSearchConsoleApiKeySchema } from "../shared/googleSearchConsoleApiKeySchema.js"
 import type { GoogleSearchConsoleConfig } from "../shared/googleSearchConsoleConfigSchema.js"
 import { googleSearchConsoleConfigSchema } from "../shared/googleSearchConsoleConfigSchema.js"
+import { googleSearchConsoleOAuthConfigSchema } from "../shared/googleSearchConsoleOAuthConfigSchema.js"
 import { googleSearchConsoleUrlSchema } from "../shared/googleSearchConsoleUrlSchema.js"
 
 export type GoogleSearchConsoleCliEnvironment = Readonly<Record<string, string | undefined>>
@@ -28,12 +29,24 @@ const googleSearchConsoleCliCredentialsFileSchema = v.pipe(
   v.object({
     accessToken: v.optional(googleSearchConsoleAccessTokenSchema),
     mobileFriendlyApiKey: v.optional(googleSearchConsoleApiKeySchema),
+    oauth: v.optional(v.partial(googleSearchConsoleOAuthConfigSchema)),
+    client_id: v.optional(googleSearchConsoleAccessTokenSchema),
+    client_secret: v.optional(googleSearchConsoleAccessTokenSchema),
+    refresh_token: v.optional(googleSearchConsoleAccessTokenSchema),
+    token_uri: v.optional(googleSearchConsoleUrlSchema),
     baseUrl: v.optional(googleSearchConsoleUrlSchema),
     urlInspectionBaseUrl: v.optional(googleSearchConsoleUrlSchema),
   }),
   v.check(
-    (credentials) => credentials.accessToken !== undefined || credentials.mobileFriendlyApiKey !== undefined,
-    "accessToken or mobileFriendlyApiKey is required",
+    (credentials) =>
+      credentials.accessToken !== undefined ||
+      credentials.mobileFriendlyApiKey !== undefined ||
+      credentials.oauth !== undefined ||
+      credentials.client_id !== undefined ||
+      credentials.client_secret !== undefined ||
+      credentials.refresh_token !== undefined ||
+      credentials.token_uri !== undefined,
+    "accessToken, oauth, or mobileFriendlyApiKey is required",
   ),
 )
 
@@ -76,14 +89,15 @@ export async function googleSearchConsoleCliConfigCreate(
   if (!credentialsFileResult.success) return createResultError(op, credentialsFileResult.errorMessage)
 
   const credentialsFileValues = credentialsFileResult.data
+  const accessToken =
+    options.accessToken ??
+    environment.GOOGLE_SEARCH_CONSOLE_ACCESS_TOKEN ??
+    environment.GOOGLE_ACCESS_TOKEN ??
+    fileValues.GOOGLE_SEARCH_CONSOLE_ACCESS_TOKEN ??
+    fileValues.GOOGLE_ACCESS_TOKEN ??
+    credentialsFileValues.accessToken
   const input = {
-    accessToken:
-      options.accessToken ??
-      environment.GOOGLE_SEARCH_CONSOLE_ACCESS_TOKEN ??
-      environment.GOOGLE_ACCESS_TOKEN ??
-      fileValues.GOOGLE_SEARCH_CONSOLE_ACCESS_TOKEN ??
-      fileValues.GOOGLE_ACCESS_TOKEN ??
-      credentialsFileValues.accessToken,
+    accessToken,
     mobileFriendlyApiKey:
       options.mobileFriendlyApiKey ??
       options.apiKey ??
@@ -104,6 +118,7 @@ export async function googleSearchConsoleCliConfigCreate(
       environment.GOOGLE_SEARCH_CONSOLE_URL_INSPECTION_BASE_URL ??
       fileValues.GOOGLE_SEARCH_CONSOLE_URL_INSPECTION_BASE_URL ??
       credentialsFileValues.urlInspectionBaseUrl,
+    oauth: googleSearchConsoleCliOAuthConfigResolve(environment, fileValues, credentialsFileValues, accessToken),
   }
   const parsed = v.safeParse(googleSearchConsoleConfigSchema, input)
   if (!parsed.success) return createResultError(op, v.summarize(parsed.issues))
@@ -159,6 +174,52 @@ async function googleSearchConsoleCliCredentialsFileLoad(
 
 function googleSearchConsoleCliCredentialsFileErrorIsMissing(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT"
+}
+
+function googleSearchConsoleCliOAuthConfigResolve(
+  environment: GoogleSearchConsoleCliEnvironment,
+  fileValues: GoogleSearchConsoleEnvFileValues,
+  credentialsFileValues: GoogleSearchConsoleCliCredentialsFileValues,
+  accessToken: string | undefined,
+): Record<string, string> | undefined {
+  const clientId =
+    environment.GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID ??
+    fileValues.GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID ??
+    credentialsFileValues.oauth?.clientId ??
+    credentialsFileValues.client_id
+  const clientSecret =
+    environment.GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_SECRET ??
+    fileValues.GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_SECRET ??
+    credentialsFileValues.oauth?.clientSecret ??
+    credentialsFileValues.client_secret
+  const refreshToken =
+    environment.GOOGLE_SEARCH_CONSOLE_OAUTH_REFRESH_TOKEN ??
+    fileValues.GOOGLE_SEARCH_CONSOLE_OAUTH_REFRESH_TOKEN ??
+    credentialsFileValues.oauth?.refreshToken ??
+    credentialsFileValues.refresh_token
+  const tokenUrl =
+    environment.GOOGLE_SEARCH_CONSOLE_OAUTH_TOKEN_URL ??
+    fileValues.GOOGLE_SEARCH_CONSOLE_OAUTH_TOKEN_URL ??
+    credentialsFileValues.oauth?.tokenUrl ??
+    credentialsFileValues.token_uri
+
+  if (clientId === undefined && clientSecret === undefined && refreshToken === undefined && tokenUrl === undefined) {
+    return undefined
+  }
+
+  if (
+    accessToken !== undefined &&
+    (clientId === undefined || clientSecret === undefined || refreshToken === undefined)
+  ) {
+    return undefined
+  }
+
+  return {
+    ...(clientId === undefined ? {} : { clientId }),
+    ...(clientSecret === undefined ? {} : { clientSecret }),
+    ...(refreshToken === undefined ? {} : { refreshToken }),
+    ...(tokenUrl === undefined ? {} : { tokenUrl }),
+  }
 }
 
 function googleSearchConsoleCliEnvFileParse(text: string): Result<GoogleSearchConsoleEnvFileValues> {

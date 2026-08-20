@@ -20,5 +20,6 @@ export function googleSearchConsoleClientCreate(
       fetch: fetchFn as GoogleSearchConsoleFetch,
     },
     fetch: fetchFn as GoogleSearchConsoleFetch,
+    oauthTokenCache: parsed.output.oauth === undefined ? undefined : {},
   })
 }
