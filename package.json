@@ -26,11 +26,14 @@
   "private": false,
   "main": "dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "google-search-console": "./dist/cli.js"
+  },
   "scripts": {
     "dev": "bun test --watch",
-    "test": "bun test",
+    "test": "bun run build && bun test",
     "test:w": "bun test --watch",
-    "build": "rm -rf ./dist && bun tsc -p ./tsconfig.lib.json",
+    "build": "rm -rf ./dist && bun tsc -p ./tsconfig.lib.json && chmod +x ./dist/cli.js",
     "check": "bun tsc --noEmit",
     "release": "bash ./ops/release.sh",
     "update": "bun update",
@@ -62,6 +65,30 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./cli": {
+      "types": "./dist/cli/index.d.ts",
+      "import": "./dist/cli/index.js"
+    },
+    "./sites": {
+      "types": "./dist/sites/index.d.ts",
+      "import": "./dist/sites/index.js"
+    },
+    "./sitemaps": {
+      "types": "./dist/sitemaps/index.d.ts",
+      "import": "./dist/sitemaps/index.js"
+    },
+    "./searchAnalytics": {
+      "types": "./dist/searchAnalytics/index.d.ts",
+      "import": "./dist/searchAnalytics/index.js"
+    },
+    "./urlInspection": {
+      "types": "./dist/urlInspection/index.d.ts",
+      "import": "./dist/urlInspection/index.js"
+    },
+    "./mobileFriendlyTest": {
+      "types": "./dist/mobileFriendlyTest/index.d.ts",
+      "import": "./dist/mobileFriendlyTest/index.js"
+    },
     "./*": {
       "types": "./dist/*.d.ts",
       "import": "./dist/*.js"
@@ -69,5 +96,8 @@
   },
   "files": [
     "dist"
-  ]
+  ],
+  "dependencies": {
+    "@stricli/core": "^1.2.5"
+  }
 }
