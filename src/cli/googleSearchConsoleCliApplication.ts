@@ -1,4 +1,5 @@
 import { buildApplication, help, version } from "@stricli/core"
+import { packageVersion } from "../packageVersion.js"
 import { googleSearchConsoleCliApplicationText } from "./googleSearchConsoleCliApplicationText.js"
 import { googleSearchConsoleCliRouteMap } from "./googleSearchConsoleCliRouteMap.js"
 import type { GoogleSearchConsoleCommandContext } from "./googleSearchConsoleCommandContext.js"
@@ -30,7 +31,7 @@ export const googleSearchConsoleCliApplication = buildApplication<GoogleSearchCo
     version: version({
       brief: "Print version information and exit",
       info: {
-        currentVersion: "0.1.0",
+        currentVersion: packageVersion,
       },
     }),
   },
