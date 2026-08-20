@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { StricliProcess } from "@stricli/core"
@@ -23,7 +23,18 @@ describe("Google Search Console CLI", () => {
 
   it("loads validated credentials with flag, environment, and env-file precedence", async () => {
     const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-"))
+    const credentialsDirectory = join(directory, ".config/google-search-console")
     const envFile = join(directory, ".env")
+    await mkdir(credentialsDirectory, { recursive: true })
+    await writeFile(
+      join(credentialsDirectory, "credentials.json"),
+      JSON.stringify({
+        accessToken: "json-token",
+        mobileFriendlyApiKey: "json-key",
+        baseUrl: "https://json.example.test",
+        urlInspectionBaseUrl: "https://json-inspection.example.test",
+      }),
+    )
     await writeFile(
       envFile,
       [
@@ -35,10 +46,10 @@ describe("Google Search Console CLI", () => {
     try {
       const result = await googleSearchConsoleCliConfigCreate({
         accessToken: "flag-token",
-        baseUrl: "https://flag.example.test",
         env: {
+          HOME: directory,
           GOOGLE_SEARCH_CONSOLE_ACCESS_TOKEN: "environment-token",
-          GOOGLE_SEARCH_CONSOLE_BASE_URL: "https://environment.example.test",
+          GOOGLE_SEARCH_CONSOLE_MOBILE_FRIENDLY_API_KEY: "environment-key",
         },
         envFile,
       })
@@ -46,9 +57,114 @@ describe("Google Search Console CLI", () => {
         success: true,
         data: {
           accessToken: "flag-token",
-          baseUrl: "https://flag.example.test",
+          mobileFriendlyApiKey: "environment-key",
+          baseUrl: "https://file.example.test",
+          urlInspectionBaseUrl: "https://json-inspection.example.test",
+        },
+      })
+    } finally {
+      await rm(directory, { force: true, recursive: true })
+    }
+  })
+
+  it("loads credentials from the default path", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-"))
+    const credentialsDirectory = join(directory, ".config/google-search-console")
+    await mkdir(credentialsDirectory, { recursive: true })
+    await writeFile(
+      join(credentialsDirectory, "credentials.json"),
+      JSON.stringify({
+        accessToken: "default-token",
+        baseUrl: "https://default.example.test",
+        urlInspectionBaseUrl: "https://default-inspection.example.test",
+      }),
+    )
+
+    try {
+      const result = await googleSearchConsoleCliConfigCreate({ env: { HOME: directory } })
+      expect(result).toEqual({
+        success: true,
+        data: {
+          accessToken: "default-token",
+          baseUrl: "https://default.example.test",
+          urlInspectionBaseUrl: "https://default-inspection.example.test",
+        },
+      })
+    } finally {
+      await rm(directory, { force: true, recursive: true })
+    }
+  })
+
+  it("loads credentials from GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-"))
+    const credentialsFile = join(directory, "credentials.json")
+    await writeFile(
+      credentialsFile,
+      JSON.stringify({ mobileFriendlyApiKey: "override-key", baseUrl: "https://override.example.test" }),
+    )
+
+    try {
+      const result = await googleSearchConsoleCliConfigCreate({
+        env: { GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE: credentialsFile },
+      })
+      expect(result).toEqual({
+        success: true,
+        data: {
+          mobileFriendlyApiKey: "override-key",
+          baseUrl: "https://override.example.test",
           urlInspectionBaseUrl: "https://searchconsole.googleapis.com/v1",
         },
+      })
+    } finally {
+      await rm(directory, { force: true, recursive: true })
+    }
+  })
+
+  it("ignores a missing implicit default credentials file", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-"))
+
+    try {
+      const result = await googleSearchConsoleCliConfigCreate({
+        env: { HOME: directory, GOOGLE_SEARCH_CONSOLE_ACCESS_TOKEN: "environment-token" },
+      })
+      expect(result).toEqual({
+        success: true,
+        data: {
+          accessToken: "environment-token",
+          baseUrl: "https://searchconsole.googleapis.com/webmasters/v3",
+          urlInspectionBaseUrl: "https://searchconsole.googleapis.com/v1",
+        },
+      })
+    } finally {
+      await rm(directory, { force: true, recursive: true })
+    }
+  })
+
+  it("rejects invalid explicit and existing default credentials files", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-"))
+    const explicitCredentialsFile = join(directory, "explicit-credentials.json")
+    const defaultCredentialsDirectory = join(directory, ".config/google-search-console")
+    await writeFile(explicitCredentialsFile, "{")
+    await mkdir(defaultCredentialsDirectory, { recursive: true })
+    await writeFile(join(defaultCredentialsDirectory, "credentials.json"), "{}")
+
+    try {
+      const explicitResult = await googleSearchConsoleCliConfigCreate({
+        env: { GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE: explicitCredentialsFile },
+      })
+      expect(explicitResult).toMatchObject({
+        success: false,
+        op: "googleSearchConsoleCliConfigCreate",
+        errorMessage: expect.stringContaining(`Unable to parse credentials file "${explicitCredentialsFile}"`),
+      })
+
+      const defaultResult = await googleSearchConsoleCliConfigCreate({ env: { HOME: directory } })
+      expect(defaultResult).toMatchObject({
+        success: false,
+        op: "googleSearchConsoleCliConfigCreate",
+        errorMessage: expect.stringContaining(
+          `Invalid credentials file "${join(defaultCredentialsDirectory, "credentials.json")}"`,
+        ),
       })
     } finally {
       await rm(directory, { force: true, recursive: true })
