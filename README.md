@@ -69,6 +69,21 @@ Credential and configuration options:
 - `--env-file <path>` to load either credential from a dotenv-style file
 - `--base-url <url>` / `GOOGLE_SEARCH_CONSOLE_BASE_URL` and `--url-inspection-base-url <url>` / `GOOGLE_SEARCH_CONSOLE_URL_INSPECTION_BASE_URL` for endpoint testing
 
+The CLI also loads credentials from `~/.config/google-search-console/credentials.json` by default. Set `GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE` to use a different JSON file. The file may contain these keys:
+
+```json
+{
+  "accessToken": "oauth-token",
+  "mobileFriendlyApiKey": "api-key",
+  "baseUrl": "https://searchconsole.googleapis.com",
+  "urlInspectionBaseUrl": "https://searchconsole.googleapis.com"
+}
+```
+
+`accessToken` or `mobileFriendlyApiKey` is required when the file exists. Configuration precedence is, from highest to lowest: explicit CLI flags, direct environment variables, values from `--env-file`, values from the credentials JSON file, and schema defaults where applicable. The default credentials file may be absent; an explicitly selected file must be readable and contain valid JSON with the shape above.
+
+`--env-file` is separate from the credentials JSON file: it parses dotenv-style `KEY=value` entries for environment-variable configuration and does not select or replace the JSON file. `GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE` must be set as a direct environment variable to override the JSON file location.
+
 Commands:
 
 ```text
