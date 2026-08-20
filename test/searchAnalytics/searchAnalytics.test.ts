@@ -32,7 +32,7 @@ describe("Search Analytics endpoint", () => {
           filters: [{ dimension: "QUERY", operator: "INCLUDING_REGEX", expression: "buy" }],
         },
       ],
-      aggregationType: "BY_NEWS_SHOWCASE_PANEL",
+      aggregationType: "BY_PAGE",
       startRow: 100,
       rowLimit: 25000,
       dataState: "HOURLY_ALL",
@@ -63,7 +63,7 @@ describe("Search Analytics endpoint", () => {
 
     const response = v.safeParse(searchAnalyticsQueryResponseSchema, {
       rows: [{ keys: ["query"] }],
-      responseAggregationType: "BY_PROPERTY",
+      responseAggregationType: "BY_PAGE",
       metadata: {
         firstIncompleteDate: "2026-08-14",
         firstIncompleteHour: "2026-08-14T12:00:00-07:00",
@@ -78,6 +78,10 @@ describe("Search Analytics endpoint", () => {
     expect(emptyResponse.success).toBe(true)
     if (emptyResponse.success) expect(emptyResponse.output).toEqual({})
     expect(v.safeParse(searchAnalyticsQueryResponseSchema, { responseAggregationType: "UNKNOWN" }).success).toBe(false)
+    expect(v.safeParse(searchAnalyticsQueryResponseSchema, { responseAggregationType: "byPage" }).success).toBe(false)
+    expect(v.safeParse(searchAnalyticsQueryRequestSchema, { ...request, aggregationType: "byPage" }).success).toBe(
+      false,
+    )
   })
 
   it("queries Search Analytics with encoded site and pagination inputs", async () => {

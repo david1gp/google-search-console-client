@@ -43,7 +43,10 @@ describe("Sites endpoints", () => {
 
     const result = await sitesList(client)
     expect(result.success).toBe(true)
-    if (result.success) expect(result.data.siteEntry?.[0]?.siteUrl).toBe("https://example.com/")
+    if (result.success) {
+      expect(result.data.siteEntry?.[0]?.siteUrl).toBe("https://example.com/")
+      expect(result.data.siteEntry?.[0]?.permissionLevel).toBe("SITE_OWNER")
+    }
   })
 
   it("uses encoded site URLs and the correct CRUD methods", async () => {
