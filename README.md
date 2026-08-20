@@ -41,7 +41,7 @@ const result = await searchAnalyticsQuery(clientResult.data, {
   siteUrl: "https://example.com/",
   startDate: "2026-08-01",
   endDate: "2026-08-15",
-  dimensions: ["QUERY", "PAGE"],
+  dimensions: ["query", "page"],
   rowLimit: 10,
 })
 
@@ -86,7 +86,7 @@ After installation, credentials can be supplied by flags, environment variables,
 ```bash
 export GOOGLE_SEARCH_CONSOLE_ACCESS_TOKEN="oauth-token"
 google-search-console sites list
-google-search-console search-analytics query https://example.com/ 2026-08-01 2026-08-15 --dimensions QUERY,PAGE
+google-search-console search-analytics query https://example.com/ 2026-08-01 2026-08-15 --dimensions query,page
 ```
 
 Credential and configuration options:
@@ -211,6 +211,91 @@ All routes use `https://searchconsole.googleapis.com` by default. Site and sitem
 | `mobileFriendlyTestRun` | `POST /v1/urlTestingTools/mobileFriendlyTest:run` (or `?key={apiKey}`) | OAuth or API key |
 
 The root module exports the client, endpoint functions, schemas, and derived types. Endpoint-specific modules are also available under `sites/`, `sitemaps/`, `searchAnalytics/`, `urlInspection/`, and `mobileFriendlyTest/`.
+
+## Sites and Search Analytics schemas
+
+Sites and Search Analytics schemas and types are exported from the package root and their endpoint modules. Validate a request with the exported schema and keep wire enum values lower/camel-case:
+
+```typescript
+import * as v from "valibot"
+import {
+  searchAnalyticsQueryRequestSchema,
+  type SearchAnalyticsQueryRequestInput,
+  type SearchAnalyticsQueryRequest,
+} from "@adaptive-ds/google-search-console-client/searchAnalytics"
+
+const request: SearchAnalyticsQueryRequestInput = {
+  siteUrl: "https://example.com/",
+  startDate: "2026-08-01",
+  endDate: "2026-08-15",
+  dimensions: ["query", "page"],
+  type: "web",
+  aggregationType: "byPage",
+  dataState: "final",
+}
+
+const validation = v.safeParse(searchAnalyticsQueryRequestSchema, request)
+if (validation.success) {
+  const parsedRequest: SearchAnalyticsQueryRequest = validation.output
+  void parsedRequest
+}
+// `searchType` is deprecated but remains accepted as an input alias:
+const compatibilityRequest: SearchAnalyticsQueryRequestInput = {
+  siteUrl: "https://example.com/",
+  startDate: "2026-08-01",
+  endDate: "2026-08-15",
+  searchType: "web",
+}
+const compatibilityValidation = v.safeParse(searchAnalyticsQueryRequestSchema, compatibilityRequest)
+// Parsed/output JSON contains only `type: "web"`; conflicting `type` and `searchType` values are rejected locally.
+// If neither is supplied, `type` is omitted and Google defaults to web.
+```
+
+`SearchAnalyticsQueryRequest` describes the parsed canonical request shape. `SearchAnalyticsQueryRequestInput` describes the
+input accepted by `searchAnalyticsQuery`, including the deprecated `searchType` compatibility alias, which is normalized
+before sending the request.
+
+The Sites response contains `siteEntry` values with the property URL and permission level. Google may omit `siteEntry` for an empty collection:
+
+```typescript
+import * as v from "valibot"
+import {
+  sitesListResponseSchema,
+  type SitesListResponse,
+} from "@adaptive-ds/google-search-console-client/sites"
+
+const response: SitesListResponse = {
+  siteEntry: [{ siteUrl: "sc-domain:example.com", permissionLevel: "siteOwner" }],
+}
+const validated = v.safeParse(sitesListResponseSchema, response)
+const emptyResponse: SitesListResponse = {}
+```
+
+Search Analytics rows always contain clicks, impressions, and CTR. `keys` is optional: it is omitted for a dimensionless query, and otherwise follows the requested dimension order. `position` is optional because Discover and Google News reports may omit it. Response metadata uses camelCase fields:
+
+```typescript
+import type { SearchAnalyticsQueryResponse } from "@adaptive-ds/google-search-console-client/searchAnalytics"
+
+const analyticsResponse: SearchAnalyticsQueryResponse = {
+  rows: [
+    { keys: ["shoes", "US"], clicks: 12, impressions: 240, ctr: 0.05, position: 3.2 },
+  ],
+  responseAggregationType: "byPage",
+  metadata: {
+    firstIncompleteDate: "2026-08-14",
+    firstIncompleteHour: "2026-08-14T12:00:00Z",
+  },
+}
+
+// Request dimensions: ["query", "country"] -> keys: ["shoes", "US"]
+const dimensionlessResponse: SearchAnalyticsQueryResponse = {
+  rows: [{ clicks: 12, impressions: 240, ctr: 0.05 }],
+}
+const discoverOrGoogleNewsResponse: SearchAnalyticsQueryResponse = {
+  rows: [{ keys: ["shoes"], clicks: 12, impressions: 240, ctr: 0.05 }],
+}
+const noDataResponse: SearchAnalyticsQueryResponse = {}
+```
 
 ## Development
 
