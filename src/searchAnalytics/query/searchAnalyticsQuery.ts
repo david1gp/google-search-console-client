@@ -4,6 +4,7 @@ import type { GoogleSearchConsoleClient } from "../../shared/GoogleSearchConsole
 import { googleSearchConsolePathSegmentEncode } from "../../shared/googleSearchConsolePathSegmentEncode.js"
 import { googleSearchConsoleRequest } from "../../shared/googleSearchConsoleRequest.js"
 import {
+  type SearchAnalyticsQueryRequestInput,
   type SearchAnalyticsQueryResponse,
   searchAnalyticsQueryRequestSchema,
   searchAnalyticsQueryResponseSchema,
@@ -11,7 +12,7 @@ import {
 
 export async function searchAnalyticsQuery(
   client: GoogleSearchConsoleClient,
-  request: v.InferInput<typeof searchAnalyticsQueryRequestSchema>,
+  request: SearchAnalyticsQueryRequestInput,
 ): Promise<Result<SearchAnalyticsQueryResponse>> {
   const op = "searchAnalyticsQuery"
   const parsedRequest = v.safeParse(searchAnalyticsQueryRequestSchema, request)

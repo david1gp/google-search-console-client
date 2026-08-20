@@ -24,11 +24,34 @@ describe("Sites endpoints", () => {
       expect(v.safeParse(siteEntrySchema, { siteUrl: "sc-domain:example.com", permissionLevel }).success).toBe(true)
     }
     expect(v.safeParse(siteEntrySchema, { siteUrl: "not-a-site", permissionLevel: "siteOwner" }).success).toBe(false)
-    expect(v.safeParse(siteEntrySchema, {}).success).toBe(true)
+    expect(v.safeParse(siteEntrySchema, {}).success).toBe(false)
+    expect(v.safeParse(siteEntrySchema, { siteUrl: "sc-domain:example.com" }).success).toBe(false)
+    expect(v.safeParse(siteEntrySchema, { permissionLevel: "siteOwner" }).success).toBe(false)
     const emptyResponse = v.safeParse(sitesListResponseSchema, {})
     expect(emptyResponse.success).toBe(true)
     if (emptyResponse.success) expect(emptyResponse.output).toEqual({})
-    expect(v.safeParse(siteEntrySchema, { permissionLevel: "SITE_OWNER" }).success).toBe(false)
+    expect(
+      v.safeParse(siteEntrySchema, { siteUrl: "sc-domain:example.com", permissionLevel: "SITE_OWNER" }).success,
+    ).toBe(false)
+  })
+
+  it("preserves unknown response fields", () => {
+    const result = v.safeParse(sitesListResponseSchema, {
+      futureResponseField: true,
+      siteEntry: [
+        {
+          siteUrl: "sc-domain:example.com",
+          permissionLevel: "siteOwner",
+          futureEntryField: "preserved",
+        },
+      ],
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output.futureResponseField).toBe(true)
+      expect(result.output.siteEntry?.[0]?.futureEntryField).toBe("preserved")
+    }
   })
 
   it("lists sites with the shared OAuth transport", async () => {

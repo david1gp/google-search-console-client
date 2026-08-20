@@ -9,6 +9,7 @@ export {
 export { type SearchAnalyticsMetadata, searchAnalyticsMetadataSchema } from "./searchAnalyticsMetadataSchema.js"
 export {
   type SearchAnalyticsQueryRequest,
+  type SearchAnalyticsQueryRequestInput,
   searchAnalyticsQueryRequestSchema,
 } from "./searchAnalyticsQueryRequestSchema.js"
 export {

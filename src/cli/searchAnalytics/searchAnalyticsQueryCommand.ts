@@ -18,14 +18,14 @@ const searchAnalyticsDimensionValues = [
   "searchAppearance",
   "hour",
 ] as const
-const searchAnalyticsSearchTypeValues = ["discover", "googleNews", "news", "image", "video", "web"] as const
+const searchAnalyticsTypeValues = ["discover", "googleNews", "news", "image", "video", "web"] as const
 const searchAnalyticsAggregationTypeValues = ["auto", "byNewsShowcasePanel", "byPage", "byProperty"] as const
 const searchAnalyticsDataStateValues = ["all", "final", "hourly_all"] as const
 
 type SearchAnalyticsQueryCommandFlags = GoogleSearchConsoleCliFlags & {
   dimensions?: readonly (typeof searchAnalyticsDimensionValues)[number][]
   type?: SearchAnalyticsQueryRequest["type"]
-  searchType?: SearchAnalyticsQueryRequest["searchType"]
+  searchType?: SearchAnalyticsQueryRequest["type"]
   dimensionFilterGroups?: readonly SearchAnalyticsDimensionFilterGroup[]
   aggregationType?: SearchAnalyticsQueryRequest["aggregationType"]
   startRow?: number
@@ -73,13 +73,13 @@ export const searchAnalyticsQueryCommand = buildCommand<
         brief: "Search Analytics report type",
         kind: "enum",
         optional: true,
-        values: searchAnalyticsSearchTypeValues,
+        values: searchAnalyticsTypeValues,
       },
       searchType: {
-        brief: "Search type filter",
+        brief: "Deprecated alias for --type",
         kind: "enum",
         optional: true,
-        values: searchAnalyticsSearchTypeValues,
+        values: searchAnalyticsTypeValues,
       },
       dimensionFilterGroups: {
         brief: "Dimension filter groups as a JSON array",

@@ -69,6 +69,7 @@ export {
   type SearchAnalyticsDimensionFilterGroup,
   type SearchAnalyticsMetadata,
   type SearchAnalyticsQueryRequest,
+  type SearchAnalyticsQueryRequestInput,
   type SearchAnalyticsQueryResponse,
   type SearchAnalyticsRow,
   searchAnalyticsDimensionFilterGroupSchema,

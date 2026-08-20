@@ -8,13 +8,24 @@ describe("Search Analytics CLI commands", () => {
     expect(searchAnalyticsRouteMap.getAllEntries().map((entry) => entry.name.original)).toEqual(["query"])
   })
 
-  it("accepts and forwards the REST enum casing", async () => {
+  it("marks search-type as a deprecated alias for type in help", async () => {
+    const result = await googleSearchConsoleCliRunResult(["search-analytics", "query", "--help"])
+
+    expect(result.exitCode).toBe(0)
+    expect(result.stderr).toBe("")
+    expect(JSON.parse(result.stdout)).toEqual({
+      success: true,
+      data: expect.stringContaining("Deprecated alias for --type"),
+    })
+  })
+
+  it("emits only canonical type when search-type is used alone", async () => {
     let requestBody: unknown
     const server = Bun.serve({
       port: 0,
       async fetch(request) {
         requestBody = await request.json()
-        return Response.json({ rows: [], responseAggregationType: "byNewsShowcasePanel" })
+        return Response.json({ rows: [], responseAggregationType: "byPage" })
       },
     })
 
@@ -30,45 +41,69 @@ describe("Search Analytics CLI commands", () => {
         "--base-url",
         `http://127.0.0.1:${server.port}`,
         "--dimensions",
-        "date,query,page,country,device,searchAppearance,hour",
-        "--type",
-        "googleNews",
+        "query,page",
         "--search-type",
-        "discover",
-        "--dimension-filter-groups",
-        JSON.stringify([
-          {
-            groupType: "and",
-            filters: [{ dimension: "searchAppearance", operator: "includingRegex", expression: "NEWS_SHOWCASE" }],
-          },
-        ]),
+        "web",
         "--aggregation-type",
-        "byNewsShowcasePanel",
+        "byPage",
         "--data-state",
-        "hourly_all",
+        "final",
       ])
 
       expect(result.exitCode).toBe(0)
       expect(result.stderr).toBe("")
       expect(JSON.parse(result.stdout)).toEqual({
         success: true,
-        data: { rows: [], responseAggregationType: "byNewsShowcasePanel" },
+        data: { rows: [], responseAggregationType: "byPage" },
       })
       expect(requestBody).toEqual({
         startDate: "2026-08-01",
         endDate: "2026-08-02",
-        dimensions: ["date", "query", "page", "country", "device", "searchAppearance", "hour"],
-        type: "googleNews",
-        searchType: "discover",
-        dimensionFilterGroups: [
-          {
-            groupType: "and",
-            filters: [{ dimension: "searchAppearance", operator: "includingRegex", expression: "NEWS_SHOWCASE" }],
-          },
-        ],
-        aggregationType: "byNewsShowcasePanel",
-        dataState: "hourly_all",
+        dimensions: ["query", "page"],
+        type: "web",
+        aggregationType: "byPage",
+        dataState: "final",
       })
+    } finally {
+      server.stop()
+    }
+  })
+
+  it("rejects conflicting type and search-type before fetching", async () => {
+    let fetchCount = 0
+    const server = Bun.serve({
+      port: 0,
+      fetch() {
+        fetchCount += 1
+        return Response.json({ rows: [], responseAggregationType: "byPage" })
+      },
+    })
+
+    try {
+      const result = await googleSearchConsoleCliRunResult([
+        "search-analytics",
+        "query",
+        "https://example.com/",
+        "2026-08-01",
+        "2026-08-02",
+        "--access-token",
+        "test-token",
+        "--base-url",
+        `http://127.0.0.1:${server.port}`,
+        "--type",
+        "web",
+        "--search-type",
+        "discover",
+      ])
+
+      expect(result.exitCode).toBe(1)
+      expect(result.stdout).toBe("")
+      expect(JSON.parse(result.stderr)).toMatchObject({
+        success: false,
+        op: "searchAnalyticsQuery",
+        errorMessage: expect.stringContaining("type and searchType must match"),
+      })
+      expect(fetchCount).toBe(0)
     } finally {
       server.stop()
     }

@@ -1,19 +1,23 @@
 import * as v from "valibot"
 import { googleSearchConsoleDateSchema } from "../../shared/googleSearchConsoleDateSchema.js"
+import { googleSearchConsoleDatetimeSchema } from "../../shared/googleSearchConsoleDatetimeSchema.js"
 
-const searchAnalyticsHourSchema = v.pipe(
-  v.string(),
-  v.regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})$/, "must use ISO-8601 date-time format"),
-  v.check(
-    (value) =>
-      v.safeParse(googleSearchConsoleDateSchema, value.slice(0, 10)).success && !Number.isNaN(Date.parse(value)),
-    "must be a valid date-time",
-  ),
-)
-
-export const searchAnalyticsMetadataSchema = v.object({
+/**
+ * Optional Search Analytics response metadata. The wire fields are camelCase, even though some Google documentation
+ * describes them with snake_case names. Unknown response members are preserved and typed as `unknown`.
+ *
+ * @example
+ * const metadata = v.parse(searchAnalyticsMetadataSchema, { firstIncompleteDate: "2026-08-14" })
+ */
+export const searchAnalyticsMetadataSchema = v.looseObject({
   firstIncompleteDate: v.optional(googleSearchConsoleDateSchema),
-  firstIncompleteHour: v.optional(searchAnalyticsHourSchema),
+  firstIncompleteHour: v.optional(googleSearchConsoleDatetimeSchema),
 })
 
+/**
+ * Validated optional Search Analytics response metadata.
+ *
+ * @example
+ * const metadata: SearchAnalyticsMetadata = { firstIncompleteHour: "2026-08-14T12:00:00Z" }
+ */
 export type SearchAnalyticsMetadata = v.InferOutput<typeof searchAnalyticsMetadataSchema>
