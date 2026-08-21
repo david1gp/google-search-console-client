@@ -13,12 +13,17 @@ export const sitemapEntrySchema = v.object({
   type: v.optional(
     v.picklist([
       "NOT_SITEMAP",
+      "notSitemap",
       "URL_LIST",
+      "urlList",
       "SITEMAP",
       "sitemap",
       "RSS_FEED",
+      "rssFeed",
       "ATOM_FEED",
+      "atomFeed",
       "PATTERN_SITEMAP",
+      "patternSitemap",
       "OCEANFRONT",
     ]),
   ),

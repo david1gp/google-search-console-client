@@ -20,13 +20,55 @@ describe("Sitemaps endpoints", () => {
     return result.data
   }
 
-  it("validates sitemap schemas", () => {
+  it("accepts human-doc sitemap type spellings", () => {
+    const sitemapTypes = ["notSitemap", "urlList", "sitemap", "rssFeed", "atomFeed", "patternSitemap"]
+    const contentTypes = ["web", "image", "video", "news", "mobile", "androidApp", "pattern", "iosApp"]
+
+    for (const type of sitemapTypes) {
+      expect(v.safeParse(sitemapEntrySchema, { type }).success).toBe(true)
+    }
+    for (const type of contentTypes) {
+      expect(v.safeParse(sitemapEntrySchema, { type: "sitemap", contents: [{ type }] }).success).toBe(true)
+    }
+  })
+
+  it("accepts Discovery sitemap type spellings", () => {
+    const sitemapTypes = [
+      "NOT_SITEMAP",
+      "URL_LIST",
+      "SITEMAP",
+      "RSS_FEED",
+      "ATOM_FEED",
+      "PATTERN_SITEMAP",
+      "OCEANFRONT",
+    ]
+    const contentTypes = [
+      "WEB",
+      "IMAGE",
+      "VIDEO",
+      "NEWS",
+      "MOBILE",
+      "ANDROID_APP",
+      "PATTERN",
+      "IOS_APP",
+      "DATA_FEED_ELEMENT",
+    ]
+
+    for (const type of sitemapTypes) {
+      expect(v.safeParse(sitemapEntrySchema, { type }).success).toBe(true)
+    }
+    for (const type of contentTypes) {
+      expect(v.safeParse(sitemapEntrySchema, { type: "SITEMAP", contents: [{ type }] }).success).toBe(true)
+    }
+  })
+
+  it("validates sitemap schemas strictly", () => {
     expect(v.safeParse(sitemapContentSchema, { type: "WEB", submitted: "10", indexed: "8" }).success).toBe(true)
     expect(
       v.safeParse(sitemapEntrySchema, {
         path: "https://example.com/sitemap.xml",
         type: "sitemap",
-        contents: [{ type: "WEB", submitted: "10", indexed: "8" }],
+        contents: [{ type: "web", submitted: "10", indexed: "8" }],
         lastSubmitted: "2026-08-19T12:00:00.123Z",
         lastDownloaded: "2026-08-19T12:00:00-07:00",
       }).success,
@@ -41,6 +83,9 @@ describe("Sitemaps endpoints", () => {
     expect(v.safeParse(sitemapEntrySchema, { path: "https://example.com/sitemap.xml", type: "UNKNOWN" }).success).toBe(
       false,
     )
+    expect(v.safeParse(sitemapEntrySchema, { contents: [{ type: "UNKNOWN" }] }).success).toBe(false)
+    expect(v.safeParse(sitemapEntrySchema, { contents: [{ type: "dataFeedElement" }] }).success).toBe(false)
+    expect(v.safeParse(sitemapEntrySchema, { type: "oceanfront" }).success).toBe(false)
     expect(v.safeParse(sitemapEntrySchema, { lastSubmitted: "2026-02-30T12:00:00Z" }).success).toBe(false)
   })
 
