@@ -212,6 +212,12 @@ All routes use `https://searchconsole.googleapis.com` by default. Site and sitem
 
 The root module exports the client, endpoint functions, schemas, and derived types. Endpoint-specific modules are also available under `sites/`, `sitemaps/`, `searchAnalytics/`, `urlInspection/`, and `mobileFriendlyTest/`.
 
+## Official references
+
+- [Sites REST reference](https://developers.google.com/webmaster-tools/v1/sites)
+- [Search Analytics query REST reference](https://developers.google.com/webmaster-tools/v1/searchanalytics/query)
+- [Search Console v1 discovery schema](https://searchconsole.googleapis.com/$discovery/rest?version=v1)
+
 ## Sites and Search Analytics schemas
 
 Sites and Search Analytics schemas and types are exported from the package root and their endpoint modules. Validate a request with the exported schema and keep wire enum values lower/camel-case:

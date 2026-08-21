@@ -5,6 +5,9 @@ import { siteEntrySchema } from "./siteEntrySchema.js"
  * Validates the Sites list response; Google may omit `siteEntry` when the collection is empty. Unknown response
  * members are preserved and typed as `unknown`.
  *
+ * @see https://developers.google.com/webmaster-tools/v1/sites
+ * @see https://searchconsole.googleapis.com/$discovery/rest?version=v1
+ *
  * @example
  * const sites = v.parse(sitesListResponseSchema, {}).siteEntry ?? []
  */

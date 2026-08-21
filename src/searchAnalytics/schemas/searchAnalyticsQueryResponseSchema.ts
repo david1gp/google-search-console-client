@@ -6,6 +6,8 @@ import { searchAnalyticsRowSchema } from "./searchAnalyticsRowSchema.js"
  * Search Analytics query response. Google may omit `rows` when there are no matching rows; unknown response fields are
  * preserved for forward compatibility and typed as `unknown`.
  *
+ * @see https://searchconsole.googleapis.com/$discovery/rest?version=v1
+ *
  * @example
  * const response = v.parse(searchAnalyticsQueryResponseSchema, { rows: [] })
  */

@@ -11,6 +11,8 @@ const searchAnalyticsTypeSchema = v.picklist(["discover", "googleNews", "news", 
  * `type`: a search-type-only input is normalized, matching values emit one value, and conflicting values are rejected.
  * When neither is supplied, `type` remains omitted so Google applies its web default.
  *
+ * @see https://developers.google.com/webmaster-tools/v1/searchanalytics/query
+ *
  * @example
  * const request = v.parse(searchAnalyticsQueryRequestSchema, {
  *   siteUrl: "https://example.com/",
