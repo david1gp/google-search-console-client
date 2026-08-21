@@ -25,13 +25,16 @@ describe("Sitemaps endpoints", () => {
     expect(
       v.safeParse(sitemapEntrySchema, {
         path: "https://example.com/sitemap.xml",
-        type: "SITEMAP",
+        type: "sitemap",
         contents: [{ type: "WEB", submitted: "10", indexed: "8" }],
         lastSubmitted: "2026-08-19T12:00:00.123Z",
         lastDownloaded: "2026-08-19T12:00:00-07:00",
       }).success,
     ).toBe(true)
     expect(v.safeParse(sitemapEntrySchema, {}).success).toBe(true)
+    expect(v.safeParse(sitemapEntrySchema, { path: "https://example.com/sitemap.xml", type: "SITEMAP" }).success).toBe(
+      true,
+    )
     const emptyResponse = v.safeParse(sitemapsListResponseSchema, {})
     expect(emptyResponse.success).toBe(true)
     if (emptyResponse.success) expect(emptyResponse.output).toEqual({})
@@ -49,12 +52,12 @@ describe("Sitemaps endpoints", () => {
       )
       expect(init?.method).toBe("GET")
       expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer test-token")
-      return new Response(JSON.stringify({ sitemap: [{ path: "https://example.com/sitemap.xml", type: "SITEMAP" }] }))
+      return new Response(JSON.stringify({ sitemap: [{ path: "https://example.com/sitemap.xml", type: "sitemap" }] }))
     })
 
     const result = await sitemapsList(client, siteUrl, "https://example.com/sitemap-index.xml")
     expect(result.success).toBe(true)
-    if (result.success) expect(result.data.sitemap?.[0]?.type).toBe("SITEMAP")
+    if (result.success) expect(result.data.sitemap?.[0]?.type).toBe("sitemap")
   })
 
   it("uses encoded sitemap paths and the correct CRUD methods", async () => {

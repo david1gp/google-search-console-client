@@ -11,7 +11,16 @@ export const sitemapEntrySchema = v.object({
   warnings: v.optional(v.string()),
   errors: v.optional(v.string()),
   type: v.optional(
-    v.picklist(["NOT_SITEMAP", "URL_LIST", "SITEMAP", "RSS_FEED", "ATOM_FEED", "PATTERN_SITEMAP", "OCEANFRONT"]),
+    v.picklist([
+      "NOT_SITEMAP",
+      "URL_LIST",
+      "SITEMAP",
+      "sitemap",
+      "RSS_FEED",
+      "ATOM_FEED",
+      "PATTERN_SITEMAP",
+      "OCEANFRONT",
+    ]),
   ),
   contents: v.optional(v.array(sitemapContentSchema)),
 })
