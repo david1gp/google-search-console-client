@@ -4,8 +4,8 @@ import { buildCommand } from "@stricli/core"
 import { createResult, createResultError, type Result } from "#result"
 import type { GoogleSearchConsoleCliEnvironment } from "../googleSearchConsoleCliConfigCreate.js"
 import {
-  googleSearchConsoleCliCredentialsFilePathResolve,
   googleSearchConsoleCliOAuthClientConfigResolve,
+  googleSearchConsoleCliProfileCredentialsFilePathResolve,
 } from "../googleSearchConsoleCliConfigCreate.js"
 import type { GoogleSearchConsoleOAuthLoginFlags } from "../googleSearchConsoleCliFlags.js"
 import { googleSearchConsoleOAuthLoginOptions } from "../googleSearchConsoleCliOptions.js"
@@ -29,6 +29,7 @@ type GoogleSearchConsoleOAuthLoginHandoff = {
   readonly completionCommand: string
   readonly instructions: readonly string[]
   readonly pendingStateFile: string
+  readonly profile: string
   readonly status: "pending"
 }
 
@@ -76,7 +77,13 @@ async function googleSearchConsoleOAuthLoginCommandExecute(
   }
 
   if (flags.callbackUrl !== undefined) {
-    await googleSearchConsoleOAuthLoginCallbackComplete(context, flags, credentialsFile, pendingStateFile)
+    await googleSearchConsoleOAuthLoginCallbackComplete(
+      context,
+      flags,
+      credentialsFile,
+      pendingStateFile,
+      flags.profile,
+    )
     return
   }
 
@@ -86,6 +93,7 @@ async function googleSearchConsoleOAuthLoginCommandExecute(
     credentialsFile,
     env: environment,
     envFile: flags.envFile,
+    profile: flags.profile,
   })
   if (!clientConfigResult.success) {
     googleSearchConsoleCliResultWrite(context.process, clientConfigResult)
@@ -123,6 +131,7 @@ async function googleSearchConsoleOAuthLoginCommandExecute(
       stateResult.data,
       credentialsFile,
       pendingStateFile,
+      flags.profile ?? "default",
     )
     return
   }
@@ -137,6 +146,7 @@ async function googleSearchConsoleOAuthLoginCommandExecute(
     clientConfigResult.data.tokenUrl,
     credentialsFile,
     pendingStateFile,
+    flags.profile ?? "default",
   )
 }
 
@@ -145,6 +155,7 @@ async function googleSearchConsoleOAuthLoginCallbackComplete(
   flags: GoogleSearchConsoleOAuthLoginFlags,
   credentialsFile: string,
   pendingStateFile: string,
+  profile: string | undefined,
 ): Promise<void> {
   const op = "googleSearchConsoleOAuthLogin"
   if (flags.callbackUrl === undefined || flags.callbackUrl.length === 0) {
@@ -156,6 +167,7 @@ async function googleSearchConsoleOAuthLoginCallbackComplete(
     callbackUrl: flags.callbackUrl,
     credentialsPath: credentialsFile,
     pendingStatePath: pendingStateFile,
+    profile,
   })
   if (!completeResult.success) {
     googleSearchConsoleCliResultWrite(context.process, completeResult)
@@ -175,6 +187,7 @@ async function googleSearchConsoleOAuthLoginAgentStart(
   state: string,
   credentialsFile: string,
   pendingStateFile: string,
+  profile: string,
 ): Promise<void> {
   const redirectResult = await googleSearchConsoleOAuthLoginAgentRedirectUriCreate(state)
   if (!redirectResult.success) {
@@ -190,6 +203,7 @@ async function googleSearchConsoleOAuthLoginAgentStart(
     codeVerifier,
     state,
     redirectResult.data,
+    profile,
   )
   if (!pendingResult.success) {
     googleSearchConsoleCliResultWrite(context.process, pendingResult)
@@ -212,6 +226,7 @@ async function googleSearchConsoleOAuthLoginAgentStart(
     redirectResult.data,
     credentialsFile,
     pendingStateFile,
+    profile,
   )
   googleSearchConsoleCliResultWrite(context.process, createResult(handoff))
 }
@@ -226,6 +241,7 @@ async function googleSearchConsoleOAuthLoginBrowserStart(
   tokenUrl: string | undefined,
   credentialsFile: string,
   pendingStateFile: string,
+  profile: string,
 ): Promise<void> {
   const op = "googleSearchConsoleOAuthLogin"
   const listenerResult = await googleSearchConsoleOAuthLoopbackListen({
@@ -234,6 +250,7 @@ async function googleSearchConsoleOAuthLoginBrowserStart(
         callbackUrl,
         credentialsPath: credentialsFile,
         pendingStatePath: pendingStateFile,
+        profile,
       }),
     state,
   })
@@ -251,6 +268,7 @@ async function googleSearchConsoleOAuthLoginBrowserStart(
     codeVerifier,
     state,
     listener.redirectUri,
+    profile,
   )
   if (!pendingResult.success) {
     listener.stop()
@@ -275,6 +293,7 @@ async function googleSearchConsoleOAuthLoginBrowserStart(
     listener.redirectUri,
     credentialsFile,
     pendingStateFile,
+    profile,
   )
   const browserResult = googleSearchConsoleOAuthBrowserOpen(authorizationUrlResult.data, context.process.env ?? {})
   if (!browserResult.success) {
@@ -306,7 +325,14 @@ function googleSearchConsoleOAuthLoginCredentialsFileResolve(
   environment: GoogleSearchConsoleCliEnvironment,
 ): Result<string> {
   const op = "googleSearchConsoleOAuthLogin"
-  const path = flags.credentialsFile ?? googleSearchConsoleCliCredentialsFilePathResolve(environment, true)
+  const pathResult = googleSearchConsoleCliProfileCredentialsFilePathResolve(
+    environment,
+    flags.profile,
+    true,
+    flags.credentialsFile,
+  )
+  if (!pathResult.success) return createResultError(op, pathResult.errorMessage)
+  const path = pathResult.data
   if (path === undefined || path.length === 0) return createResultError(op, "Credentials file path is required")
   return createResult(path)
 }
@@ -323,12 +349,14 @@ function googleSearchConsoleOAuthLoginPendingStatePersist(
   codeVerifier: string,
   state: string,
   redirectUri: string,
+  profile: string,
 ) {
   return googleSearchConsoleOAuthPendingStatePersist(path, {
     clientId,
     clientSecret,
     codeVerifier,
     createdAt: Date.now(),
+    profile,
     redirectUri,
     state,
     tokenUrl: tokenUrl ?? googleSearchConsoleOAuthDefaultTokenUrl,
@@ -346,8 +374,9 @@ function googleSearchConsoleOAuthLoginHandoffCreate(
   callbackUrl: string,
   credentialsFile: string,
   pendingStateFile: string,
+  profile: string,
 ): GoogleSearchConsoleOAuthLoginHandoff {
-  const completionCommand = googleSearchConsoleOAuthLoginCompletionCommandCreate(credentialsFile)
+  const completionCommand = googleSearchConsoleOAuthLoginCompletionCommandCreate(credentialsFile, profile)
   return {
     authorizationUrl,
     callbackUrl,
@@ -359,12 +388,13 @@ function googleSearchConsoleOAuthLoginHandoffCreate(
       "Replace PASTE_COMPLETE_LOOPBACK_REDIRECT_URL in completionCommand with that URL and run the command.",
     ],
     pendingStateFile,
+    profile,
     status: "pending",
   }
 }
 
-function googleSearchConsoleOAuthLoginCompletionCommandCreate(credentialsFile: string): string {
-  return `google-search-console auth login --callback-url 'PASTE_COMPLETE_LOOPBACK_REDIRECT_URL' --credentials-file ${googleSearchConsoleOAuthLoginShellQuote(credentialsFile)}`
+function googleSearchConsoleOAuthLoginCompletionCommandCreate(credentialsFile: string, profile: string): string {
+  return `google-search-console auth login --callback-url 'PASTE_COMPLETE_LOOPBACK_REDIRECT_URL' --credentials-file ${googleSearchConsoleOAuthLoginShellQuote(credentialsFile)} --profile ${googleSearchConsoleOAuthLoginShellQuote(profile)}`
 }
 
 function googleSearchConsoleOAuthLoginShellQuote(value: string): string {

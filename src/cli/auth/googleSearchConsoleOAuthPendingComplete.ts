@@ -1,7 +1,9 @@
 import { unlink } from "node:fs/promises"
+import * as v from "valibot"
 import { createResult, createResultError, type Result } from "#result"
 import type { GoogleSearchConsoleFetch } from "../../shared/googleSearchConsoleFetch.js"
 import { googleSearchConsoleOAuthScope } from "../../shared/googleSearchConsoleOAuthScope.js"
+import { googleSearchConsoleCliProfileNameSchema } from "../googleSearchConsoleCliProfileNameSchema.js"
 import {
   type GoogleSearchConsoleOAuthAuthorizationCodeExchangeOptions,
   googleSearchConsoleOAuthAuthorizationCodeExchange,
@@ -14,6 +16,7 @@ export type GoogleSearchConsoleOAuthPendingCompleteOptions = {
   readonly callbackUrl: string | URL
   readonly credentialsPath: string
   readonly pendingStatePath: string
+  readonly profile?: string
 }
 
 export async function googleSearchConsoleOAuthPendingComplete(
@@ -23,6 +26,13 @@ export async function googleSearchConsoleOAuthPendingComplete(
   const op = "googleSearchConsoleOAuthPendingComplete"
   const pendingResult = await googleSearchConsoleOAuthPendingStateLoad(options.pendingStatePath)
   if (!pendingResult.success) return pendingResult
+
+  if (options.profile !== undefined) {
+    const profileResult = v.safeParse(googleSearchConsoleCliProfileNameSchema, options.profile)
+    if (!profileResult.success) return createResultError(op, "Invalid credential profile")
+    if (pendingResult.data.profile !== undefined && pendingResult.data.profile !== profileResult.output)
+      return createResultError(op, "OAuth pending state profile does not match the selected profile")
+  }
 
   const callbackResult = googleSearchConsoleOAuthCallbackParse({
     callbackUrl: options.callbackUrl,

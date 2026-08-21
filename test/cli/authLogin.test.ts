@@ -16,7 +16,7 @@ describe("Google Search Console OAuth login command", () => {
       success: true,
       data:
         "USAGE\n" +
-        "  google-search-console auth login [--agent] [--callback-url url] [--client-id client-id] [--client-secret client-secret] [--credentials-file path] [--env-file path]\n" +
+        "  google-search-console auth login [--agent] [--callback-url url] [--client-id client-id] [--client-secret client-secret] [--credentials-file path] [--env-file path] [--profile name]\n" +
         "  google-search-console auth login --help\n" +
         "\n" +
         "Authorize Search Console with OAuth\n" +
@@ -28,6 +28,7 @@ describe("Google Search Console OAuth login command", () => {
         "     [--client-secret]     Optional OAuth desktop client secret\n" +
         "     [--credentials-file]  Path to save OAuth credentials\n" +
         "     [--env-file]          Load credentials and URLs from a dotenv file\n" +
+        "     [--profile]           Credential profile\n" +
         "  -h  --help               Print help information and exit",
     })
   })
@@ -58,6 +59,7 @@ describe("Google Search Console OAuth login command", () => {
 
       const output = JSON.parse(result.stdout)
       expect(output).toMatchObject({ success: true, data: { status: "pending" } })
+      expect(output.data.profile).toBe("default")
       expect(output.data.authorizationUrl).toContain(`scope=${encodeURIComponent(googleSearchConsoleOAuthScope)}`)
       expect(output.data.authorizationUrl).not.toContain(clientSecret)
       expect(output.data.completionCommand).toContain(`--credentials-file '${credentialsFile}'`)
@@ -86,7 +88,111 @@ describe("Google Search Console OAuth login command", () => {
       expect(output.data.credentialsFile).toBe(credentialsFile)
       expect(output.data.pendingStateFile).toBe(join(directory, ".config/google-search-console/.oauth-pending.json"))
       expect(output.data.completionCommand).toContain(`--credentials-file '${credentialsFile}'`)
+      expect(output.data.completionCommand).toContain("--profile 'default'")
+      expect(output.data.profile).toBe("default")
     } finally {
+      await rm(directory, { force: true, recursive: true })
+    }
+  })
+
+  it("completes the default OAuth profile without an explicit profile flag", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-login-"))
+    const credentialsFile = join(directory, ".config/google-search-console/credentials.json")
+    const pendingStateFile = join(directory, ".config/google-search-console/.oauth-pending.json")
+    const tokenUrl = "https://oauth.example.test/token"
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = (async (_input, _init) =>
+      Response.json({
+        access_token: "access-token",
+        expires_in: 3600,
+        refresh_token: "refresh-token",
+        scope: googleSearchConsoleOAuthScope,
+      })) as typeof fetch
+
+    try {
+      const agentResult = await googleSearchConsoleCliRunResult(
+        ["auth", "login", "--agent", "--client-id", "client-id"],
+        { HOME: directory, GOOGLE_SEARCH_CONSOLE_OAUTH_TOKEN_URL: tokenUrl },
+      )
+      const agentOutput = JSON.parse(agentResult.stdout)
+      expect(agentOutput.data.credentialsFile).toBe(credentialsFile)
+      expect(agentOutput.data.pendingStateFile).toBe(pendingStateFile)
+      expect(agentOutput.data.profile).toBe("default")
+      expect(JSON.parse(await readFile(pendingStateFile, "utf8")).profile).toBe("default")
+
+      const authorizationUrl = new URL(agentOutput.data.authorizationUrl)
+      const state = authorizationUrl.searchParams.get("state")
+      if (state === null) throw new Error("Agent authorization URL did not include state")
+      const callbackUrl = `${agentOutput.data.callbackUrl}?code=authorization-code&scope=${encodeURIComponent(
+        googleSearchConsoleOAuthScope,
+      )}&state=${encodeURIComponent(state)}`
+
+      const callbackResult = await googleSearchConsoleCliRunResult(["auth", "login", "--callback-url", callbackUrl], {
+        HOME: directory,
+      })
+      expect(callbackResult.exitCode).toBe(0)
+      expect(JSON.parse(callbackResult.stdout)).toEqual({
+        success: true,
+        data: { credentialsFile, status: "authorized" },
+      })
+      expect(JSON.parse(await readFile(credentialsFile, "utf8"))).toMatchObject({
+        client_id: "client-id",
+        refresh_token: "refresh-token",
+        token_uri: tokenUrl,
+      })
+    } finally {
+      globalThis.fetch = originalFetch
+      await rm(directory, { force: true, recursive: true })
+    }
+  })
+
+  it("completes OAuth with the legacy explicit credentials-file path", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-login-"))
+    const credentialsFile = join(directory, "legacy-credentials.json")
+    const tokenUrl = "https://oauth.example.test/token"
+    await writeFile(credentialsFile, JSON.stringify({ client_id: "client-id" }))
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = (async (_input, _init) =>
+      Response.json({
+        access_token: "access-token",
+        expires_in: 3600,
+        refresh_token: "refresh-token",
+        scope: googleSearchConsoleOAuthScope,
+      })) as typeof fetch
+
+    try {
+      const agentResult = await googleSearchConsoleCliRunResult(
+        ["auth", "login", "--agent", "--credentials-file", credentialsFile],
+        { GOOGLE_SEARCH_CONSOLE_OAUTH_TOKEN_URL: tokenUrl },
+      )
+      const agentOutput = JSON.parse(agentResult.stdout)
+      expect(agentOutput.data.credentialsFile).toBe(credentialsFile)
+      expect(agentOutput.data.pendingStateFile).toBe(join(directory, ".oauth-pending.json"))
+      expect(agentOutput.data.profile).toBe("default")
+
+      const authorizationUrl = new URL(agentOutput.data.authorizationUrl)
+      const state = authorizationUrl.searchParams.get("state")
+      if (state === null) throw new Error("Agent authorization URL did not include state")
+      const callbackUrl = `${agentOutput.data.callbackUrl}?code=authorization-code&scope=${encodeURIComponent(
+        googleSearchConsoleOAuthScope,
+      )}&state=${encodeURIComponent(state)}`
+
+      const callbackResult = await googleSearchConsoleCliRunResult(
+        ["auth", "login", "--callback-url", callbackUrl, "--credentials-file", credentialsFile],
+        {},
+      )
+      expect(callbackResult.exitCode).toBe(0)
+      expect(JSON.parse(callbackResult.stdout)).toEqual({
+        success: true,
+        data: { credentialsFile, status: "authorized" },
+      })
+      expect(JSON.parse(await readFile(credentialsFile, "utf8"))).toMatchObject({
+        client_id: "client-id",
+        refresh_token: "refresh-token",
+        token_uri: tokenUrl,
+      })
+    } finally {
+      globalThis.fetch = originalFetch
       await rm(directory, { force: true, recursive: true })
     }
   })
@@ -113,9 +219,40 @@ describe("Google Search Console OAuth login command", () => {
     }
   })
 
-  it("completes an agent handoff from a later callback URL", async () => {
+  it("rejects path-like profiles before creating OAuth pending state", async () => {
     const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-login-"))
     const credentialsFile = join(directory, "credentials.json")
+
+    try {
+      const result = await googleSearchConsoleCliRunResult(
+        [
+          "auth",
+          "login",
+          "--agent",
+          "--client-id",
+          "client-id",
+          "--credentials-file",
+          credentialsFile,
+          "--profile",
+          "../escape",
+        ],
+        {},
+      )
+      expect(result.exitCode).toBe(1)
+      expect(result.stdout).toBe("")
+      expect(JSON.parse(result.stderr)).toMatchObject({
+        success: false,
+        op: "googleSearchConsoleOAuthLogin",
+      })
+      await expect(stat(join(directory, ".oauth-pending.json"))).rejects.toMatchObject({ code: "ENOENT" })
+    } finally {
+      await rm(directory, { force: true, recursive: true })
+    }
+  })
+
+  it("completes an agent handoff from a later callback URL", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-login-"))
+    const credentialsFile = join(directory, ".config/google-search-console/profiles/work/credentials.json")
     const tokenUrl = "https://oauth.example.test/token"
     const originalFetch = globalThis.fetch
     let requestBody = ""
@@ -133,10 +270,13 @@ describe("Google Search Console OAuth login command", () => {
 
     try {
       const agentResult = await googleSearchConsoleCliRunResult(
-        ["auth", "login", "--agent", "--client-id", "client-id", "--credentials-file", credentialsFile],
-        { GOOGLE_SEARCH_CONSOLE_OAUTH_TOKEN_URL: tokenUrl },
+        ["auth", "login", "--agent", "--client-id", "client-id", "--profile", "work"],
+        { HOME: directory, GOOGLE_SEARCH_CONSOLE_OAUTH_TOKEN_URL: tokenUrl },
       )
       const agentOutput = JSON.parse(agentResult.stdout)
+      expect(agentOutput.data.profile).toBe("work")
+      expect(agentOutput.data.completionCommand).toContain("--profile 'work'")
+      expect(JSON.parse(await readFile(agentOutput.data.pendingStateFile, "utf8")).profile).toBe("work")
       const authorizationUrl = new URL(agentOutput.data.authorizationUrl)
       const state = authorizationUrl.searchParams.get("state")
       if (state === null) throw new Error("Agent authorization URL did not include state")
@@ -145,8 +285,8 @@ describe("Google Search Console OAuth login command", () => {
       )}&state=${encodeURIComponent(state)}`
 
       const callbackResult = await googleSearchConsoleCliRunResult(
-        ["auth", "login", "--callback-url", callbackUrl, "--credentials-file", credentialsFile],
-        {},
+        ["auth", "login", "--callback-url", callbackUrl, "--profile", "work"],
+        { HOME: directory },
       )
       expect(callbackResult.exitCode).toBe(0)
       expect(JSON.parse(callbackResult.stdout)).toEqual({
@@ -164,6 +304,8 @@ describe("Google Search Console OAuth login command", () => {
         refresh_token: "refresh-token",
         token_uri: tokenUrl,
       })
+      expect((await stat(credentialsFile)).mode & 0o777).toBe(0o600)
+      expect((await stat(join(directory, ".config/google-search-console/profiles/work"))).mode & 0o777).toBe(0o700)
     } finally {
       globalThis.fetch = originalFetch
       await rm(directory, { force: true, recursive: true })
@@ -175,7 +317,7 @@ describe("Google Search Console OAuth login command", () => {
 
     const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-login-"))
     const browserDirectory = join(directory, "bin")
-    const credentialsFile = join(directory, "credentials.json")
+    const credentialsFile = join(directory, ".config/google-search-console/profiles/work/credentials.json")
     const tokenUrl = "https://oauth.example.test/token"
     await mkdir(browserDirectory, { recursive: true })
     await writeFile(
@@ -211,8 +353,8 @@ if (!response.ok) process.exit(1)`,
 
     try {
       const result = await googleSearchConsoleCliRunResult(
-        ["auth", "login", "--client-id", "client-id", "--credentials-file", credentialsFile],
-        { PATH: browserDirectory, GOOGLE_SEARCH_CONSOLE_OAUTH_TOKEN_URL: tokenUrl },
+        ["auth", "login", "--client-id", "client-id", "--profile", "work"],
+        { HOME: directory, PATH: browserDirectory, GOOGLE_SEARCH_CONSOLE_OAUTH_TOKEN_URL: tokenUrl },
       )
       expect(result.exitCode).toBe(0)
       expect(result.stderr).toBe("")

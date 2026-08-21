@@ -407,6 +407,44 @@ describe("Google Search Console OAuth authorization primitives", () => {
     }
   })
 
+  it("does not complete a pending flow for a different selected profile", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "google-search-console-oauth-"))
+    const pendingPath = join(directory, "profiles/work/.oauth-pending.json")
+    const credentialsPath = join(directory, "profiles/work/credentials.json")
+    const pendingState = {
+      clientId: "client-id",
+      codeVerifier: "a".repeat(43),
+      createdAt: Date.now(),
+      profile: "work",
+      redirectUri: "http://127.0.0.1:1234/oauth2/callback",
+      state: "state",
+      tokenUrl: "https://oauth.example.test/token",
+    }
+
+    try {
+      await googleSearchConsoleOAuthPendingStatePersist(pendingPath, pendingState)
+      const result = await googleSearchConsoleOAuthPendingComplete(
+        async () => {
+          throw new Error("must not exchange a mismatched profile")
+        },
+        {
+          callbackUrl: "http://127.0.0.1:1234/oauth2/callback?code=code&state=state",
+          credentialsPath,
+          pendingStatePath: pendingPath,
+          profile: "default",
+        },
+      )
+
+      expect(result).toMatchObject({
+        success: false,
+        errorMessage: "OAuth pending state profile does not match the selected profile",
+      })
+      expect((await googleSearchConsoleOAuthPendingStateLoad(pendingPath)).success).toBe(true)
+    } finally {
+      await rm(directory, { force: true, recursive: true })
+    }
+  })
+
   it("keeps pending state for invalid callbacks and exchange failures, but removes terminal provider errors and scope failures", async () => {
     const directory = await mkdtemp(join(tmpdir(), "google-search-console-oauth-"))
     const pendingPath = join(directory, "pending.json")
