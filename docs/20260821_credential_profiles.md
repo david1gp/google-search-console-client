@@ -29,7 +29,7 @@ Support multiple Google Search Console credential profiles while keeping the sin
 - [x] 3. Implement profile-attributed `sites list --all-profiles` aggregation.
 - [x] 4. Add/update tests and documentation, then run formatting, checks, and the full test suite.
 - [x] 5. Create conventional feature commit(s) and push them.
-- [ ] 6. Create the next minor release, verify the GitHub Actions OIDC publish and npm result, and fix/re-release if needed.
+- [x] 6. Create the next minor release, verify the GitHub Actions OIDC publish and npm result, and fix/re-release if needed.
 
 ## Paths
 
