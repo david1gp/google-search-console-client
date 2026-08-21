@@ -4,6 +4,7 @@ import { googleSearchConsoleAccessTokenSchema } from "./googleSearchConsoleAcces
 export const googleSearchConsoleOAuthTokenResponseSchema = v.object({
   access_token: googleSearchConsoleAccessTokenSchema,
   expires_in: v.pipe(v.number(), v.integer(), v.minValue(1)),
+  refresh_token: v.optional(googleSearchConsoleAccessTokenSchema),
   token_type: v.optional(v.string()),
   scope: v.optional(v.string()),
 })

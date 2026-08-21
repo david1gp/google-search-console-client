@@ -6,7 +6,7 @@ const googleSearchConsoleOAuthTokenUrl = "https://oauth2.googleapis.com/token"
 
 export const googleSearchConsoleOAuthConfigSchema = v.object({
   clientId: googleSearchConsoleAccessTokenSchema,
-  clientSecret: googleSearchConsoleAccessTokenSchema,
+  clientSecret: v.optional(googleSearchConsoleAccessTokenSchema),
   refreshToken: googleSearchConsoleAccessTokenSchema,
   tokenUrl: v.optional(googleSearchConsoleUrlSchema, googleSearchConsoleOAuthTokenUrl),
 })

@@ -1,4 +1,5 @@
 import { buildRouteMap, type RouteMap } from "@stricli/core"
+import { googleSearchConsoleOAuthRouteMap } from "./auth/googleSearchConsoleOAuthRouteMap.js"
 import type { GoogleSearchConsoleCommandContext } from "./googleSearchConsoleCommandContext.js"
 import { mobileFriendlyTestRouteMap } from "./mobileFriendlyTest/mobileFriendlyTestRouteMap.js"
 import { searchAnalyticsRouteMap } from "./searchAnalytics/searchAnalyticsRouteMap.js"
@@ -8,6 +9,7 @@ import { urlInspectionRouteMap } from "./urlInspection/urlInspectionRouteMap.js"
 
 export const googleSearchConsoleCliRouteMap: RouteMap<GoogleSearchConsoleCommandContext> = buildRouteMap({
   routes: {
+    auth: googleSearchConsoleOAuthRouteMap,
     mobileFriendlyTest: mobileFriendlyTestRouteMap,
     searchAnalytics: searchAnalyticsRouteMap,
     sitemaps: sitemapsRouteMap,

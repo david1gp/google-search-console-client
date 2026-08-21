@@ -51,7 +51,7 @@ export async function googleSearchConsoleRequest<TSchema extends v.GenericSchema
   let accessToken: string | undefined
   const redactionSecrets = new Set<string>()
   if (client.config.oauth !== undefined) {
-    redactionSecrets.add(client.config.oauth.clientSecret)
+    if (client.config.oauth.clientSecret !== undefined) redactionSecrets.add(client.config.oauth.clientSecret)
     redactionSecrets.add(client.config.oauth.refreshToken)
   }
   if (auth === "oauth") {

@@ -86,6 +86,32 @@ describe("google search console shared client", () => {
     })
   })
 
+  it("omits an optional OAuth client secret from refresh requests", async () => {
+    let requestInit: RequestInit | undefined
+    const clientResult = googleSearchConsoleClientCreate({
+      oauth: {
+        clientId: oauthConfig.clientId,
+        refreshToken: oauthConfig.refreshToken,
+      },
+      fetch: async (_input, init) => {
+        requestInit = init
+        return new Response(JSON.stringify({ access_token: "access-token", expires_in: 3600 }), { status: 200 })
+      },
+    })
+
+    expect(clientResult.success).toBe(true)
+    if (!clientResult.success) return
+
+    const result = await googleSearchConsoleOAuthTokenResolve(clientResult.data)
+
+    expect(result.success).toBe(true)
+    expect(Object.fromEntries(new URLSearchParams(String(requestInit?.body)))).toEqual({
+      client_id: oauthConfig.clientId,
+      grant_type: "refresh_token",
+      refresh_token: oauthConfig.refreshToken,
+    })
+  })
+
   it("reuses cached tokens and refreshes near-expiry tokens", async () => {
     let refreshCount = 0
     const clientResult = googleSearchConsoleClientCreate({

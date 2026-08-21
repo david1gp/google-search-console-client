@@ -6,3 +6,11 @@ export type GoogleSearchConsoleCliFlags = {
   readonly urlInspectionBaseUrl?: string
   readonly envFile?: string
 }
+
+export type GoogleSearchConsoleOAuthLoginFlags = Pick<GoogleSearchConsoleCliFlags, "envFile"> & {
+  readonly agent?: boolean
+  readonly callbackUrl?: string
+  readonly clientId?: string
+  readonly clientSecret?: string
+  readonly credentialsFile?: string
+}

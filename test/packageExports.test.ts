@@ -14,5 +14,7 @@ describe("package endpoint exports", () => {
     expect(typeof searchAnalytics.searchAnalyticsQuery).toBe("function")
     expect(typeof urlInspection.urlInspectionIndexInspect).toBe("function")
     expect(typeof mobileFriendlyTest.mobileFriendlyTestRun).toBe("function")
+    expect(typeof root.googleSearchConsoleOAuthAuthorizationCodeExchange).toBe("function")
+    expect(typeof root.googleSearchConsoleOAuthCredentialsPersist).toBe("function")
   })
 })

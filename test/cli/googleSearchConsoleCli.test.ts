@@ -3,17 +3,18 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { StricliProcess } from "@stricli/core"
-import { packageVersion } from "../../src/packageVersion.js"
 import {
   googleSearchConsoleCliApplication,
   googleSearchConsoleCliConfigCreate,
   googleSearchConsoleCliRouteMap,
   googleSearchConsoleCliRun,
 } from "../../src/cli/index.js"
+import { packageVersion } from "../../src/packageVersion.js"
 
 describe("Google Search Console CLI", () => {
   it("composes all endpoint route maps", () => {
     expect(googleSearchConsoleCliRouteMap.getAllEntries().map((entry) => entry.name.original)).toEqual([
+      "auth",
       "mobileFriendlyTest",
       "searchAnalytics",
       "sitemaps",

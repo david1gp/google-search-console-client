@@ -41,10 +41,10 @@ async function googleSearchConsoleOAuthTokenRefresh(
 ): Promise<Result<string>> {
   const body = new URLSearchParams({
     client_id: oauth.clientId,
-    client_secret: oauth.clientSecret,
     grant_type: "refresh_token",
     refresh_token: oauth.refreshToken,
   })
+  if (oauth.clientSecret !== undefined) body.set("client_secret", oauth.clientSecret)
 
   let response: Response
   try {

@@ -12,6 +12,20 @@ import { googleSearchConsoleUrlSchema } from "../shared/googleSearchConsoleUrlSc
 
 export type GoogleSearchConsoleCliEnvironment = Readonly<Record<string, string | undefined>>
 
+export type GoogleSearchConsoleCliOAuthClientConfig = {
+  readonly clientId?: string
+  readonly clientSecret?: string
+  readonly tokenUrl?: string
+}
+
+export type GoogleSearchConsoleCliOAuthClientConfigResolveOptions = {
+  readonly clientId?: string
+  readonly clientSecret?: string
+  readonly credentialsFile?: string
+  readonly env?: GoogleSearchConsoleCliEnvironment
+  readonly envFile?: string
+}
+
 export type GoogleSearchConsoleCliConfigCreateOptions = {
   readonly accessToken?: string
   readonly apiKey?: string
@@ -126,7 +140,7 @@ export async function googleSearchConsoleCliConfigCreate(
   return createResult(parsed.output)
 }
 
-function googleSearchConsoleCliCredentialsFilePathResolve(
+export function googleSearchConsoleCliCredentialsFilePathResolve(
   environment: GoogleSearchConsoleCliEnvironment,
   useProcessHomeDirectory: boolean,
 ): string | undefined {
@@ -139,9 +153,51 @@ function googleSearchConsoleCliCredentialsFilePathResolve(
   return join(homedir(), ".config/google-search-console/credentials.json")
 }
 
+export async function googleSearchConsoleCliOAuthClientConfigResolve(
+  options: GoogleSearchConsoleCliOAuthClientConfigResolveOptions = {},
+): Promise<Result<GoogleSearchConsoleCliOAuthClientConfig>> {
+  const op = "googleSearchConsoleCliOAuthClientConfigResolve"
+  const environment = options.env ?? process.env
+  let fileValues: GoogleSearchConsoleEnvFileValues = {}
+  if (options.envFile !== undefined) {
+    let text: string
+    try {
+      text = await readFile(options.envFile, "utf8")
+    } catch (error) {
+      return createResultError(
+        op,
+        `Unable to read env file "${options.envFile}": ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+
+    const fileResult = googleSearchConsoleCliEnvFileParse(text)
+    if (!fileResult.success) return createResultError(op, fileResult.errorMessage)
+    fileValues = fileResult.data
+  }
+
+  const credentialsFilePath =
+    options.credentialsFile ?? googleSearchConsoleCliCredentialsFilePathResolve(environment, true)
+  const credentialsFileResult = await googleSearchConsoleCliCredentialsFileLoad(
+    credentialsFilePath,
+    options.credentialsFile !== undefined || environment.GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE !== undefined,
+    true,
+  )
+  if (!credentialsFileResult.success) return createResultError(op, credentialsFileResult.errorMessage)
+
+  const resolved = googleSearchConsoleCliOAuthConfigResolve(
+    environment,
+    fileValues,
+    credentialsFileResult.data,
+    undefined,
+    options,
+  )
+  return createResult(resolved ?? {})
+}
+
 async function googleSearchConsoleCliCredentialsFileLoad(
   path: string | undefined,
   explicit: boolean,
+  allowMissing = false,
 ): Promise<Result<GoogleSearchConsoleCliCredentialsFileValues>> {
   const op = "googleSearchConsoleCliCredentialsFileLoad"
   if (path === undefined) return createResult({})
@@ -150,7 +206,8 @@ async function googleSearchConsoleCliCredentialsFileLoad(
   try {
     text = await readFile(path, "utf8")
   } catch (error) {
-    if (!explicit && googleSearchConsoleCliCredentialsFileErrorIsMissing(error)) return createResult({})
+    if ((!explicit || allowMissing) && googleSearchConsoleCliCredentialsFileErrorIsMissing(error))
+      return createResult({})
     return createResultError(
       op,
       `Unable to read credentials file "${path}": ${error instanceof Error ? error.message : String(error)}`,
@@ -181,13 +238,16 @@ function googleSearchConsoleCliOAuthConfigResolve(
   fileValues: GoogleSearchConsoleEnvFileValues,
   credentialsFileValues: GoogleSearchConsoleCliCredentialsFileValues,
   accessToken: string | undefined,
+  overrides: Pick<GoogleSearchConsoleCliOAuthClientConfigResolveOptions, "clientId" | "clientSecret"> = {},
 ): Record<string, string> | undefined {
   const clientId =
+    overrides.clientId ??
     environment.GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID ??
     fileValues.GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID ??
     credentialsFileValues.oauth?.clientId ??
     credentialsFileValues.client_id
   const clientSecret =
+    overrides.clientSecret ??
     environment.GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_SECRET ??
     fileValues.GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_SECRET ??
     credentialsFileValues.oauth?.clientSecret ??
@@ -207,10 +267,7 @@ function googleSearchConsoleCliOAuthConfigResolve(
     return undefined
   }
 
-  if (
-    accessToken !== undefined &&
-    (clientId === undefined || clientSecret === undefined || refreshToken === undefined)
-  ) {
+  if (accessToken !== undefined && (clientId === undefined || refreshToken === undefined)) {
     return undefined
   }
 

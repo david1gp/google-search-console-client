@@ -1,10 +1,38 @@
+export {
+  type GoogleSearchConsoleOAuthAuthorizationCodeExchangeOptions,
+  type GoogleSearchConsoleOAuthAuthorizationUrlCreateOptions,
+  type GoogleSearchConsoleOAuthCallback,
+  type GoogleSearchConsoleOAuthCallbackParseOptions,
+  type GoogleSearchConsoleOAuthLoopbackListener,
+  type GoogleSearchConsoleOAuthLoopbackListenOptions,
+  type GoogleSearchConsoleOAuthPendingCompleteOptions,
+  type GoogleSearchConsoleOAuthPendingState,
+  type GoogleSearchConsoleOAuthPkce,
+  googleSearchConsoleOAuthAuthorizationCodeExchange,
+  googleSearchConsoleOAuthAuthorizationUrlCreate,
+  googleSearchConsoleOAuthCallbackParse,
+  googleSearchConsoleOAuthCredentialsPersist,
+  googleSearchConsoleOAuthLoginCommand,
+  googleSearchConsoleOAuthLoopbackListen,
+  googleSearchConsoleOAuthPendingComplete,
+  googleSearchConsoleOAuthPendingStateLoad,
+  googleSearchConsoleOAuthPendingStatePersist,
+  googleSearchConsoleOAuthPendingStateSchema,
+  googleSearchConsoleOAuthPkceCreate,
+  googleSearchConsoleOAuthRouteMap,
+  googleSearchConsoleOAuthStateCreate,
+} from "./cli/auth/index.js"
 export type { GoogleSearchConsoleCommandContext } from "./cli/googleSearchConsoleCommandContext.js"
 export {
   type GoogleSearchConsoleCliConfigCreateOptions,
   type GoogleSearchConsoleCliEnvironment,
   type GoogleSearchConsoleCliFlags,
+  type GoogleSearchConsoleCliOAuthClientConfig,
+  type GoogleSearchConsoleCliOAuthClientConfigResolveOptions,
+  type GoogleSearchConsoleOAuthLoginFlags,
   googleSearchConsoleCliApplication,
   googleSearchConsoleCliConfigCreate,
+  googleSearchConsoleCliOAuthClientConfigResolve,
   googleSearchConsoleCliOptions,
   googleSearchConsoleCliResultWrite,
   googleSearchConsoleCliRouteMap,
@@ -46,7 +74,6 @@ export {
   googleSearchConsoleConfigSchema,
 } from "./googleSearchConsoleConfigSchema.js"
 export { googleSearchConsoleRequest } from "./googleSearchConsoleRequest.js"
-export { packageVersion } from "./packageVersion.js"
 export {
   type MobileFriendlyTestBlockedResource,
   type MobileFriendlyTestImage,
@@ -64,6 +91,7 @@ export {
   mobileFriendlyTestRunResponseSchema,
   mobileFriendlyTestStatusSchema,
 } from "./mobileFriendlyTest/index.js"
+export { packageVersion } from "./packageVersion.js"
 export {
   type SearchAnalyticsDimensionFilter,
   type SearchAnalyticsDimensionFilterGroup,
@@ -96,6 +124,7 @@ export {
   type GoogleSearchConsoleOAuthConfigInput,
   googleSearchConsoleOAuthConfigSchema,
 } from "./shared/googleSearchConsoleOAuthConfigSchema.js"
+export { googleSearchConsoleOAuthScope } from "./shared/googleSearchConsoleOAuthScope.js"
 export { googleSearchConsoleOAuthTokenResolve } from "./shared/googleSearchConsoleOAuthTokenResolve.js"
 export {
   type GoogleSearchConsoleOAuthTokenResponse,
