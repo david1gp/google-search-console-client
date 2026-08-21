@@ -19,7 +19,7 @@ The package also installs the `google-search-console` executable and its CLI run
 The library accepts separate credentials for Google's OAuth and API-key authentication. OAuth can use either a static bearer token or a refresh-token configuration:
 
 - `accessToken`: OAuth 2.0 bearer token for Sites, Sitemaps, Search Analytics, URL Inspection, and Mobile-Friendly Testing.
-- `oauth`: refresh-token configuration with `clientId`, `clientSecret`, `refreshToken`, and optional `tokenUrl`.
+- `oauth`: refresh-token configuration with `clientId`, `refreshToken`, optional `clientSecret`, and optional `tokenUrl`.
 - `mobileFriendlyApiKey`: API key for Mobile-Friendly Testing. If both Mobile-Friendly credentials are configured, the API key is selected.
 
 ```typescript
@@ -75,7 +75,7 @@ const clientResult = googleSearchConsoleClientCreate({
 })
 ```
 
-`GoogleSearchConsoleOAuthConfig`, `GoogleSearchConsoleOAuthConfigInput`, and `googleSearchConsoleOAuthConfigSchema` are exported from the package. The three credential fields are required; `tokenUrl` is optional. The library does not run an interactive authorization flow, request consent, or persist tokens. The refresh token must already have been obtained for the Google account and API scopes needed by the application.
+`GoogleSearchConsoleOAuthConfig`, `GoogleSearchConsoleOAuthConfigInput`, and `googleSearchConsoleOAuthConfigSchema` are exported from the package. `clientId` and `refreshToken` are required; `clientSecret` and `tokenUrl` are optional. The library does not run an interactive authorization flow, request consent, or persist tokens. The refresh token must already have been obtained for the Google account and API scopes needed by the application.
 
 When `oauth` is used, the client exchanges the refresh token for a bearer token automatically. The resulting access token is cached only in memory on that client, with a 60-second expiry margin; concurrent requests share one refresh. If an OAuth-backed request receives `401`, the cached token is invalidated, refreshed, and the request is retried once. Static `accessToken` takes precedence over `oauth` and therefore is not refreshed or retried by this mechanism. Mobile-Friendly API-key authentication remains separate.
 
@@ -97,9 +97,40 @@ Credential and configuration options:
 - `--base-url <url>` / `GOOGLE_SEARCH_CONSOLE_BASE_URL` and `--url-inspection-base-url <url>` / `GOOGLE_SEARCH_CONSOLE_URL_INSPECTION_BASE_URL` for endpoint testing
 - `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID`, `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_SECRET`, `GOOGLE_SEARCH_CONSOLE_OAUTH_REFRESH_TOKEN`, and optional `GOOGLE_SEARCH_CONSOLE_OAUTH_TOKEN_URL` for refresh-token OAuth
 
-The CLI has no OAuth-specific flags. OAuth variables can be supplied directly in the process environment or with `--env-file <path>`. The dotenv parser accepts `KEY=value`, optional `export`, single- or double-quoted values, comments, and blank lines. For OAuth fields, precedence is direct environment, then `--env-file`, then nested `oauth` JSON values, then flat Google authorized-user JSON values. A direct environment value always wins over a dotenv value.
+OAuth variables can be supplied directly in the process environment or with `--env-file <path>`. The dotenv parser accepts `KEY=value`, optional `export`, single- or double-quoted values, comments, and blank lines. For OAuth fields, precedence is direct environment, then `--env-file`, then nested `oauth` JSON values, then flat Google authorized-user JSON values. A direct environment value always wins over a dotenv value.
 
-The CLI also loads credentials from `~/.config/google-search-console/credentials.json` by default. Set `GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE` as a direct environment variable to use a different JSON file; `--env-file` does not select the credentials-file path. The file may contain these keys:
+### Authorize with `auth login`
+
+`google-search-console auth login` runs an OAuth authorization-code flow with PKCE and requests exactly the `https://www.googleapis.com/auth/webmasters` scope. It saves the resulting refresh credentials to the credentials file. A desktop OAuth client ID is required; pass it with `--client-id`, `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID`, an env file, or an existing credentials file. A desktop client secret is optional because desktop clients may be public; if supplied, use `--client-secret`, `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_SECRET`, an env file, or an existing credentials file. PKCE is used with or without a secret.
+
+In normal mode, the command starts a loopback listener on `127.0.0.1`, opens Google's authorization page with the platform browser launcher, and waits for the callback. It does not read stdin:
+
+```bash
+export GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID="your-desktop-client-id"
+google-search-console auth login
+```
+
+On success, JSON is written to stdout:
+
+```json
+{"success":true,"data":{"credentialsFile":"/home/me/.config/google-search-console/credentials.json","status":"authorized"}}
+```
+
+Use `--agent` when the CLI cannot open a browser or the browser runs on another machine. It prints a pending JSON handoff and exits without opening a browser:
+
+```bash
+google-search-console auth login --agent --client-id "$GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID"
+```
+
+The `data` object contains `authorizationUrl`, `callbackUrl`, `credentialsFile`, `completionCommand`, `instructions`, `pendingStateFile`, and `status: "pending"`. Open `authorizationUrl` in a browser. Because agent mode does not run the loopback listener, the browser will show a failed loopback redirect after authorization. Copy the complete redirect URL from the address bar, replace the placeholder in `completionCommand`, and run it on the machine that created the pending state:
+
+```bash
+google-search-console auth login --callback-url 'PASTE_COMPLETE_LOOPBACK_REDIRECT_URL' --credentials-file '/home/me/.config/google-search-console/credentials.json'
+```
+
+The callback URL contains the authorization code and state; treat it as sensitive and do not publish it. A successful completion prints the same `status: "authorized"` JSON as normal mode. The authorization grant must resolve to the exact Webmasters scope; credentials are not saved when the callback reports a different scope or the token response omits or differs from it.
+
+The CLI loads credentials from `~/.config/google-search-console/credentials.json` by default. For `auth login`, `--credentials-file` takes precedence over `GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE`, which takes precedence over that default. Set `GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE` as a direct environment variable to use a different JSON file for other CLI commands as well; `--env-file` does not select the credentials-file path. The file may contain these keys:
 
 ```json
 {
@@ -134,7 +165,7 @@ or Google's authorized-user field names at the file root:
 }
 ```
 
-`tokenUrl`/`token_uri` is optional and defaults to `https://oauth2.googleapis.com/token`. A complete OAuth configuration requires `clientId`/`client_id`, `clientSecret`/`client_secret`, and `refreshToken`/`refresh_token`. The file may also contain `accessToken`, `mobileFriendlyApiKey`, `baseUrl`, and `urlInspectionBaseUrl`. Overall CLI precedence is explicit flags, direct environment variables, `--env-file` values, credentials JSON values, then schema defaults where applicable; static `accessToken` still wins over refresh OAuth at request time. The default credentials file may be absent; an explicitly selected file must be readable and contain valid JSON.
+`tokenUrl`/`token_uri` is optional and defaults to `https://oauth2.googleapis.com/token`. A complete OAuth configuration requires `clientId`/`client_id` and `refreshToken`/`refresh_token`; `clientSecret`/`client_secret` is optional for public desktop clients. The file may also contain `accessToken`, `mobileFriendlyApiKey`, `baseUrl`, and `urlInspectionBaseUrl`. Overall CLI precedence is explicit flags, direct environment variables, `--env-file` values, credentials JSON values, then schema defaults where applicable; static `accessToken` still wins over refresh OAuth at request time. The default credentials file may be absent; an explicitly selected file must be readable and contain valid JSON.
 
 ### Create authorized-user JSON safely
 
@@ -193,6 +224,7 @@ google-search-console sitemaps delete <site-url> <sitemap-url>
 google-search-console search-analytics query <site-url> <start-date> <end-date>
 google-search-console url-inspection inspect <inspection-url> <site-url>
 google-search-console mobile-friendly-test run <url>
+google-search-console auth login [--agent] [--callback-url url] [--client-id client-id] [--client-secret client-secret] [--credentials-file path] [--env-file path]
 ```
 
 Use `--help` on the executable or command for all optional flags. Successful results are JSON on stdout; `ResultErr` values are JSON on stderr and exit with status `1`.

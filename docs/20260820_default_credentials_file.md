@@ -37,7 +37,7 @@ In addition to static credentials, the file accepts refresh-token OAuth in eithe
 }
 ```
 
-The flat form is the Google authorized-user format. `tokenUrl`/`token_uri` is optional and defaults to `https://oauth2.googleapis.com/token`; the client ID, client secret, and refresh token are required together. For each OAuth field, direct environment values take precedence over dotenv values, which take precedence over nested JSON, which takes precedence over flat JSON. The supported OAuth environment variables are `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID`, `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_SECRET`, `GOOGLE_SEARCH_CONSOLE_OAUTH_REFRESH_TOKEN`, and optional `GOOGLE_SEARCH_CONSOLE_OAUTH_TOKEN_URL`.
+The flat form is the Google authorized-user format. `tokenUrl`/`token_uri` is optional and defaults to `https://oauth2.googleapis.com/token`; the client ID and refresh token are required, while the client secret is optional for public desktop clients. For each OAuth field, direct environment values take precedence over dotenv values, which take precedence over nested JSON, which takes precedence over flat JSON. The supported OAuth environment variables are `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID`, optional `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_SECRET`, `GOOGLE_SEARCH_CONSOLE_OAUTH_REFRESH_TOKEN`, and optional `GOOGLE_SEARCH_CONSOLE_OAUTH_TOKEN_URL`.
 
 ### Combining an installed-app file with an existing refresh token
 
@@ -83,7 +83,7 @@ Remove temporary copies after checking the generated file's mode. The library it
 
 ## Runtime behavior
 
-The CLI and library use the existing refresh token non-interactively. They do not launch a browser, obtain consent, or persist returned access tokens. During requests, OAuth access tokens are cached only in memory per client, refreshed 60 seconds before expiry, and shared across concurrent refreshes. A refresh-backed request receiving `401` invalidates the cached token, refreshes, and retries once. A static `accessToken` has precedence and does not use automatic refresh or retry; Mobile-Friendly API-key authentication remains separate.
+For existing refresh-token credentials, the CLI and library use the refresh token non-interactively and do not launch a browser, obtain consent, or persist returned access tokens. The CLI's separate `auth login` command can obtain consent and save refresh credentials; it uses the default file unless `--credentials-file` or `GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE` selects another path. During requests, OAuth access tokens are cached only in memory per client, refreshed 60 seconds before expiry, and shared across concurrent refreshes. A refresh-backed request receiving `401` invalidates the cached token, refreshes, and retries once. A static `accessToken` has precedence and does not use automatic refresh or retry; Mobile-Friendly API-key authentication remains separate.
 
 ## Approach
 

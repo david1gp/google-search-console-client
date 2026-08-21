@@ -28,7 +28,7 @@ The library's validated client configuration accepts an optional `oauth` object 
 }
 ```
 
-`clientId`, `clientSecret`, and `refreshToken` are required. `tokenUrl` is optional and defaults to `https://oauth2.googleapis.com/token`. The OAuth schema and its `GoogleSearchConsoleOAuthConfig` and `GoogleSearchConsoleOAuthConfigInput` types are public exports.
+`clientId` and `refreshToken` are required. `clientSecret` is optional for public desktop clients. `tokenUrl` is optional and defaults to `https://oauth2.googleapis.com/token`. The OAuth schema and its `GoogleSearchConsoleOAuthConfig` and `GoogleSearchConsoleOAuthConfigInput` types are public exports.
 
 The CLI maps these OAuth environment variables:
 
@@ -37,7 +37,7 @@ The CLI maps these OAuth environment variables:
 - `GOOGLE_SEARCH_CONSOLE_OAUTH_REFRESH_TOKEN`
 - `GOOGLE_SEARCH_CONSOLE_OAUTH_TOKEN_URL` (optional)
 
-Direct environment values take precedence over the same values in `--env-file`; the dotenv parser supports `KEY=value`, optional `export`, quoted values, comments, and blank lines. There are no OAuth-specific CLI flags. A credentials JSON file can express OAuth either as nested camelCase `oauth` fields or as Google's flat authorized-user fields:
+Direct environment values take precedence over the same values in `--env-file`; the dotenv parser supports `KEY=value`, optional `export`, quoted values, comments, and blank lines. A credentials JSON file can express OAuth either as nested camelCase `oauth` fields or as Google's flat authorized-user fields:
 
 ```json
 {
@@ -61,7 +61,7 @@ Direct environment values take precedence over the same values in `--env-file`; 
 
 For each OAuth field, CLI precedence is direct environment, dotenv, nested `oauth` JSON, then flat authorized-user JSON. In the shared request path, a static `accessToken` takes precedence over refresh OAuth; the Mobile-Friendly API key remains an independent authentication mode.
 
-Refreshes use a POST form-encoded request containing `client_id`, `client_secret`, `grant_type=refresh_token`, and `refresh_token`. The returned access token is cached in memory per client until 60 seconds before expiry, and concurrent refreshes share one in-flight request. An OAuth-backed API request retries once after `401` by invalidating the cached token and refreshing it. Static-token requests do not refresh or use this retry. No interactive authorization flow or refreshed-token persistence is implemented, and OAuth errors do not expose credential or token values.
+Refreshes use a POST form-encoded request containing `client_id`, `grant_type=refresh_token`, and `refresh_token`, plus `client_secret` when configured. The returned access token is cached in memory per client until 60 seconds before expiry, and concurrent refreshes share one in-flight request. An OAuth-backed API request retries once after `401` by invalidating the cached token and refreshing it. Static-token requests do not refresh or use this retry. The library does not implement interactive authorization or refreshed-token persistence; the CLI's `auth login` command handles interactive authorization with PKCE, requests exactly `https://www.googleapis.com/auth/webmasters`, and persists refresh credentials. OAuth errors do not expose credential or token values.
 
 ## Approach
 

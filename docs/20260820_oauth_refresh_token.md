@@ -2,17 +2,17 @@
 
 ## Goal
 
-Allow library and CLI users to authenticate with a Google OAuth client ID, client secret, and refresh token, automatically obtaining and refreshing short-lived access tokens.
+Allow library and CLI users to authenticate with a Google OAuth client ID and refresh token, optionally using a client secret, while automatically obtaining and refreshing short-lived access tokens.
 
 ## Decisions
 
-- Support a typed `oauth` library configuration with client ID, client secret, refresh token, and optional token URL.
+- Support a typed `oauth` library configuration with client ID and refresh token, an optional client secret, and an optional token URL.
 - Accept Google authorized-user credential fields (`client_id`, `client_secret`, `refresh_token`, `token_uri`) in the default credentials JSON, alongside a nested camelCase `oauth` form.
 - Support corresponding `GOOGLE_SEARCH_CONSOLE_OAUTH_*` environment variables and dotenv values.
 - Keep static access tokens higher precedence than refresh credentials; keep Mobile-Friendly API-key authentication separate.
 - Use Google's form-encoded token exchange, cache tokens in memory until shortly before expiry, deduplicate concurrent refreshes, and retry one API request after a refreshed-token `401`.
 - Never include client secrets, refresh tokens, or returned access tokens in errors or logs.
-- Do not add an interactive authorization flow or persist refreshed access tokens.
+- Keep refresh-token requests non-interactive and do not persist refreshed access tokens; the separate CLI `auth login` command performs interactive PKCE authorization and persists refresh credentials.
 
 ## Approach
 
