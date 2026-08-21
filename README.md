@@ -101,7 +101,7 @@ OAuth variables can be supplied directly in the process environment or with `--e
 
 ### Authorize with `auth login`
 
-`google-search-console auth login` runs an OAuth authorization-code flow with PKCE and requests exactly the `https://www.googleapis.com/auth/webmasters` scope. It saves the resulting refresh credentials to the credentials file. A desktop OAuth client ID is required; pass it with `--client-id`, `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID`, an env file, or an existing credentials file. A desktop client secret is optional because desktop clients may be public; if supplied, use `--client-secret`, `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_SECRET`, an env file, or an existing credentials file. PKCE is used with or without a secret.
+`google-search-console auth login` runs an OAuth authorization-code flow with PKCE and requests exactly the `https://www.googleapis.com/auth/webmasters` scope. It saves the resulting refresh credentials to the selected credential profile. Without `--profile`, it uses the implicit `default` profile. A desktop OAuth client ID is required; pass it with `--client-id`, `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID`, an env file, or an existing credentials file. A desktop client secret is optional because desktop clients may be public; if supplied, use `--client-secret`, `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_SECRET`, an env file, or an existing credentials file. PKCE is used with or without a secret.
 
 In normal mode, the command starts a loopback listener on `127.0.0.1`, opens Google's authorization page with the platform browser launcher, and waits for the callback. It does not read stdin:
 
@@ -122,15 +122,35 @@ Use `--agent` when the CLI cannot open a browser or the browser runs on another 
 google-search-console auth login --agent --client-id "$GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID"
 ```
 
-The `data` object contains `authorizationUrl`, `callbackUrl`, `credentialsFile`, `completionCommand`, `instructions`, `pendingStateFile`, and `status: "pending"`. Open `authorizationUrl` in a browser. Because agent mode does not run the loopback listener, the browser will show a failed loopback redirect after authorization. Copy the complete redirect URL from the address bar, replace the placeholder in `completionCommand`, and run it on the machine that created the pending state:
+The `data` object contains `authorizationUrl`, `callbackUrl`, `credentialsFile`, `completionCommand`, `instructions`, `pendingStateFile`, `profile`, and `status: "pending"`. Open `authorizationUrl` in a browser. Because agent mode does not run the loopback listener, the browser will show a failed loopback redirect after authorization. Copy the complete redirect URL from the address bar, replace the placeholder in `completionCommand`, and run it on the machine that created the pending state:
 
 ```bash
-google-search-console auth login --callback-url 'PASTE_COMPLETE_LOOPBACK_REDIRECT_URL' --credentials-file '/home/me/.config/google-search-console/credentials.json'
+google-search-console auth login --callback-url 'PASTE_COMPLETE_LOOPBACK_REDIRECT_URL' --credentials-file '/home/me/.config/google-search-console/credentials.json' --profile 'default'
 ```
 
 The callback URL contains the authorization code and state; treat it as sensitive and do not publish it. A successful completion prints the same `status: "authorized"` JSON as normal mode. The authorization grant must resolve to the exact Webmasters scope; credentials are not saved when the callback reports a different scope or the token response omits or differs from it.
 
-The CLI loads credentials from `~/.config/google-search-console/credentials.json` by default. For `auth login`, `--credentials-file` takes precedence over `GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE`, which takes precedence over that default. Set `GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE` as a direct environment variable to use a different JSON file for other CLI commands as well; `--env-file` does not select the credentials-file path. The file may contain these keys:
+### Credential profiles and storage
+
+The CLI uses one profile for each normal command. Omit `--profile` to use `default`, or select a named profile with `--profile <name>`:
+
+```bash
+google-search-console auth login --profile work
+google-search-console sites list --profile work
+```
+
+Profile names are 1–64 characters, start with a letter or number, and may contain only letters, numbers, `.`, `_`, and `-`. They cannot contain path separators or other path-like values.
+
+The exact profile storage paths are:
+
+- `default` credentials: `$HOME/.config/google-search-console/credentials.json`
+- named credentials: `$HOME/.config/google-search-console/profiles/<name>/credentials.json`
+- `default` pending OAuth state: `$HOME/.config/google-search-console/.oauth-pending.json`
+- named pending OAuth state: `$HOME/.config/google-search-console/profiles/<name>/.oauth-pending.json`
+
+On Windows, `$HOME` means `%USERPROFILE%` when `HOME` is not set. OAuth credential and pending-state files are written with mode `600`, and their containing directories with mode `700` where supported.
+
+The existing `credentials.json` behavior remains compatible. For `auth login`, `--credentials-file <path>` takes precedence over `GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE`, which takes precedence over the profile-derived path. The explicit path is also used by the generated callback completion command. Set `GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE` as a direct environment variable to use a different JSON file for other CLI commands as well; `--env-file` does not select the credentials-file path. A missing implicit `default` file is allowed when credentials are supplied by flags or environment variables; regular commands require a readable valid credentials file for a selected named profile, while `auth login` can create a missing profile file. The file may contain these keys:
 
 ```json
 {
@@ -165,7 +185,21 @@ or Google's authorized-user field names at the file root:
 }
 ```
 
-`tokenUrl`/`token_uri` is optional and defaults to `https://oauth2.googleapis.com/token`. A complete OAuth configuration requires `clientId`/`client_id` and `refreshToken`/`refresh_token`; `clientSecret`/`client_secret` is optional for public desktop clients. The file may also contain `accessToken`, `mobileFriendlyApiKey`, `baseUrl`, and `urlInspectionBaseUrl`. Overall CLI precedence is explicit flags, direct environment variables, `--env-file` values, credentials JSON values, then schema defaults where applicable; static `accessToken` still wins over refresh OAuth at request time. The default credentials file may be absent; an explicitly selected file must be readable and contain valid JSON.
+`tokenUrl`/`token_uri` is optional and defaults to `https://oauth2.googleapis.com/token`. A complete OAuth configuration requires `clientId`/`client_id` and `refreshToken`/`refresh_token`; `clientSecret`/`client_secret` is optional for public desktop clients. The file may also contain `accessToken`, `mobileFriendlyApiKey`, `baseUrl`, and `urlInspectionBaseUrl`. Overall CLI precedence is explicit flags, direct environment variables, `--env-file` values, credentials JSON values, then schema defaults where applicable; static `accessToken` still wins over refresh OAuth at request time. For regular commands, a default file may be absent when another credential source is present, but an explicitly selected file or named profile must be readable and contain valid JSON. `auth login` may create its selected target file.
+
+Only `sites list` supports explicit aggregation across profiles:
+
+```bash
+google-search-console sites list --all-profiles
+```
+
+This discovers `default` (when its credentials file exists) and named profile directories, queries them in default-first then alphabetical order, and adds `profile` to every returned `siteEntry` while retaining each API response's `siteUrl` and `permissionLevel`. For example, successful JSON is emitted on one line in this shape:
+
+```json
+{"success":true,"data":{"siteEntry":[{"siteUrl":"sc-domain:example.com","permissionLevel":"siteOwner","profile":"default"},{"siteUrl":"https://example.net/","permissionLevel":"siteFullUser","profile":"work"}]}}
+```
+
+`--all-profiles` cannot be combined with `--profile` or `GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE`. It fails if no profiles are configured or if any profile cannot be loaded or queried. Without `--all-profiles`, `sites list` keeps its existing response shape and uses exactly one profile; for example, `google-search-console sites list --profile work` still emits `{"success":true,"data":{"siteEntry":[{"siteUrl":"https://example.net/","permissionLevel":"siteFullUser"}]}}` without adding a `profile` property.
 
 ### Create authorized-user JSON safely
 
@@ -224,7 +258,8 @@ google-search-console sitemaps delete <site-url> <sitemap-url>
 google-search-console search-analytics query <site-url> <start-date> <end-date>
 google-search-console url-inspection inspect <inspection-url> <site-url>
 google-search-console mobile-friendly-test run <url>
-google-search-console auth login [--agent] [--callback-url url] [--client-id client-id] [--client-secret client-secret] [--credentials-file path] [--env-file path]
+google-search-console auth login [--agent] [--callback-url url] [--client-id client-id] [--client-secret client-secret] [--credentials-file path] [--env-file path] [--profile name]
+google-search-console sites list --all-profiles
 ```
 
 Use `--help` on the executable or command for all optional flags. Successful results are JSON on stdout; `ResultErr` values are JSON on stderr and exit with status `1`.
