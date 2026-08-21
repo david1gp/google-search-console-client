@@ -9,6 +9,7 @@ import type { GoogleSearchConsoleConfig } from "../shared/googleSearchConsoleCon
 import { googleSearchConsoleConfigSchema } from "../shared/googleSearchConsoleConfigSchema.js"
 import { googleSearchConsoleOAuthConfigSchema } from "../shared/googleSearchConsoleOAuthConfigSchema.js"
 import { googleSearchConsoleUrlSchema } from "../shared/googleSearchConsoleUrlSchema.js"
+import { googleSearchConsoleCliProfileNameSchema } from "./googleSearchConsoleCliProfileNameSchema.js"
 
 export type GoogleSearchConsoleCliEnvironment = Readonly<Record<string, string | undefined>>
 
@@ -24,6 +25,7 @@ export type GoogleSearchConsoleCliOAuthClientConfigResolveOptions = {
   readonly credentialsFile?: string
   readonly env?: GoogleSearchConsoleCliEnvironment
   readonly envFile?: string
+  readonly profile?: string
 }
 
 export type GoogleSearchConsoleCliConfigCreateOptions = {
@@ -32,9 +34,11 @@ export type GoogleSearchConsoleCliConfigCreateOptions = {
   readonly mobileFriendlyApiKey?: string
   readonly baseUrl?: string
   readonly urlInspectionBaseUrl?: string
+  readonly credentialsFile?: string
   readonly config?: unknown
   readonly env?: GoogleSearchConsoleCliEnvironment
   readonly envFile?: string
+  readonly profile?: string
 }
 
 type GoogleSearchConsoleEnvFileValues = Record<string, string>
@@ -95,10 +99,20 @@ export async function googleSearchConsoleCliConfigCreate(
   }
 
   const environment = options.env ?? process.env
-  const credentialsFilePath = googleSearchConsoleCliCredentialsFilePathResolve(environment, options.env === undefined)
+  const credentialsFilePathResult = googleSearchConsoleCliProfileCredentialsFilePathResolve(
+    environment,
+    options.profile,
+    options.env === undefined,
+    options.credentialsFile,
+  )
+  if (!credentialsFilePathResult.success) return createResultError(op, credentialsFilePathResult.errorMessage)
+
+  const credentialsFilePath = credentialsFilePathResult.data
   const credentialsFileResult = await googleSearchConsoleCliCredentialsFileLoad(
     credentialsFilePath,
-    environment.GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE !== undefined,
+    options.credentialsFile !== undefined ||
+      environment.GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE !== undefined ||
+      (options.profile !== undefined && options.profile !== "default"),
   )
   if (!credentialsFileResult.success) return createResultError(op, credentialsFileResult.errorMessage)
 
@@ -147,10 +161,30 @@ export function googleSearchConsoleCliCredentialsFilePathResolve(
   const override = environment.GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE
   if (override !== undefined) return override
 
-  const homeDirectory = environment.HOME ?? environment.USERPROFILE
-  if (homeDirectory !== undefined) return join(homeDirectory, ".config/google-search-console/credentials.json")
-  if (!useProcessHomeDirectory) return undefined
-  return join(homedir(), ".config/google-search-console/credentials.json")
+  const directory = googleSearchConsoleCliCredentialsDirectoryPathResolve(environment, useProcessHomeDirectory)
+  if (directory === undefined) return undefined
+  return join(directory, "credentials.json")
+}
+
+export function googleSearchConsoleCliProfileCredentialsFilePathResolve(
+  environment: GoogleSearchConsoleCliEnvironment,
+  profile: string | undefined,
+  useProcessHomeDirectory: boolean,
+  credentialsFile?: string,
+): Result<string | undefined> {
+  const op = "googleSearchConsoleCliProfileCredentialsFilePathResolve"
+  const profileResult = v.safeParse(googleSearchConsoleCliProfileNameSchema, profile ?? "default")
+  if (!profileResult.success)
+    return createResultError(op, `Invalid credential profile: ${v.summarize(profileResult.issues)}`)
+  if (credentialsFile !== undefined) return createResult(credentialsFile)
+
+  const override = environment.GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE
+  if (override !== undefined) return createResult(override)
+
+  const directory = googleSearchConsoleCliCredentialsDirectoryPathResolve(environment, useProcessHomeDirectory)
+  if (directory === undefined) return createResult(undefined)
+  if (profileResult.output === "default") return createResult(join(directory, "credentials.json"))
+  return createResult(join(directory, "profiles", profileResult.output, "credentials.json"))
 }
 
 export async function googleSearchConsoleCliOAuthClientConfigResolve(
@@ -175,11 +209,17 @@ export async function googleSearchConsoleCliOAuthClientConfigResolve(
     fileValues = fileResult.data
   }
 
-  const credentialsFilePath =
-    options.credentialsFile ?? googleSearchConsoleCliCredentialsFilePathResolve(environment, true)
+  const credentialsFilePathResult = await googleSearchConsoleCliOAuthClientConfigCredentialsFilePathResolve(
+    options,
+    environment,
+  )
+  if (!credentialsFilePathResult.success) return createResultError(op, credentialsFilePathResult.errorMessage)
+  const credentialsFilePath = credentialsFilePathResult.data
   const credentialsFileResult = await googleSearchConsoleCliCredentialsFileLoad(
     credentialsFilePath,
-    options.credentialsFile !== undefined || environment.GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE !== undefined,
+    options.credentialsFile !== undefined ||
+      environment.GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE !== undefined ||
+      (options.profile !== undefined && options.profile !== "default"),
     true,
   )
   if (!credentialsFileResult.success) return createResultError(op, credentialsFileResult.errorMessage)
@@ -192,6 +232,18 @@ export async function googleSearchConsoleCliOAuthClientConfigResolve(
     options,
   )
   return createResult(resolved ?? {})
+}
+
+function googleSearchConsoleCliOAuthClientConfigCredentialsFilePathResolve(
+  options: GoogleSearchConsoleCliOAuthClientConfigResolveOptions,
+  environment: GoogleSearchConsoleCliEnvironment,
+): Result<string | undefined> {
+  return googleSearchConsoleCliProfileCredentialsFilePathResolve(
+    environment,
+    options.profile,
+    true,
+    options.credentialsFile,
+  )
 }
 
 async function googleSearchConsoleCliCredentialsFileLoad(
@@ -231,6 +283,16 @@ async function googleSearchConsoleCliCredentialsFileLoad(
 
 function googleSearchConsoleCliCredentialsFileErrorIsMissing(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT"
+}
+
+function googleSearchConsoleCliCredentialsDirectoryPathResolve(
+  environment: GoogleSearchConsoleCliEnvironment,
+  useProcessHomeDirectory: boolean,
+): string | undefined {
+  const homeDirectory = environment.HOME ?? environment.USERPROFILE
+  if (homeDirectory !== undefined) return join(homeDirectory, ".config/google-search-console")
+  if (!useProcessHomeDirectory) return undefined
+  return join(homedir(), ".config/google-search-console")
 }
 
 function googleSearchConsoleCliOAuthConfigResolve(

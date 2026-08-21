@@ -340,6 +340,44 @@ describe("Google Search Console CLI", () => {
     }
   })
 
+  it("selects a validated named profile without changing credential precedence", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-"))
+    const profileCredentialsDirectory = join(directory, ".config/google-search-console/profiles/work")
+    const explicitCredentialsFile = join(directory, "explicit-credentials.json")
+    await mkdir(profileCredentialsDirectory, { recursive: true })
+    await writeFile(
+      join(profileCredentialsDirectory, "credentials.json"),
+      JSON.stringify({ accessToken: "profile-token", baseUrl: "https://profile.example.test" }),
+    )
+    await writeFile(
+      explicitCredentialsFile,
+      JSON.stringify({ accessToken: "explicit-token", baseUrl: "https://explicit.example.test" }),
+    )
+
+    try {
+      const profileResult = await googleSearchConsoleCliConfigCreate({ profile: "work", env: { HOME: directory } })
+      expect(profileResult).toEqual({
+        success: true,
+        data: {
+          accessToken: "profile-token",
+          baseUrl: "https://profile.example.test",
+          urlInspectionBaseUrl: "https://searchconsole.googleapis.com/v1",
+        },
+      })
+
+      const explicitResult = await googleSearchConsoleCliConfigCreate({
+        profile: "work",
+        env: { HOME: directory, GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE: explicitCredentialsFile },
+      })
+      expect(explicitResult).toMatchObject({ success: true, data: { accessToken: "explicit-token" } })
+
+      const invalidResult = await googleSearchConsoleCliConfigCreate({ profile: "../escape", env: { HOME: directory } })
+      expect(invalidResult).toMatchObject({ success: false, op: "googleSearchConsoleCliConfigCreate" })
+    } finally {
+      await rm(directory, { force: true, recursive: true })
+    }
+  })
+
   it("loads credentials from the USERPROFILE default path when HOME is absent", async () => {
     const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-"))
     const credentialsDirectory = join(directory, ".config/google-search-console")
@@ -513,6 +551,38 @@ describe("Google Search Console CLI", () => {
       expect(authorization.value).toBe("Bearer flag-token")
     } finally {
       server.stop()
+    }
+  })
+
+  it("accepts --profile on regular commands and loads the named credentials", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-"))
+    const profileCredentialsDirectory = join(directory, ".config/google-search-console/profiles/work")
+    const authorization = { value: null as string | null }
+    const server = Bun.serve({
+      port: 0,
+      fetch(request) {
+        authorization.value = request.headers.get("Authorization")
+        return Response.json({ siteEntry: [] })
+      },
+    })
+    await mkdir(profileCredentialsDirectory, { recursive: true })
+    await writeFile(
+      join(profileCredentialsDirectory, "credentials.json"),
+      JSON.stringify({ accessToken: "profile-token" }),
+    )
+
+    try {
+      const result = await googleSearchConsoleCliRunResult(
+        ["sites", "list", "--profile", "work", "--base-url", `http://127.0.0.1:${server.port}`],
+        { HOME: directory },
+      )
+      expect(result.exitCode).toBe(0)
+      expect(result.stderr).toBe("")
+      expect(JSON.parse(result.stdout)).toEqual({ success: true, data: { siteEntry: [] } })
+      expect(authorization.value).toBe("Bearer profile-token")
+    } finally {
+      server.stop()
+      await rm(directory, { force: true, recursive: true })
     }
   })
 

@@ -1,4 +1,5 @@
 export type GoogleSearchConsoleCliFlags = {
+  readonly profile?: string
   readonly accessToken?: string
   readonly apiKey?: string
   readonly mobileFriendlyApiKey?: string
@@ -7,7 +8,7 @@ export type GoogleSearchConsoleCliFlags = {
   readonly envFile?: string
 }
 
-export type GoogleSearchConsoleOAuthLoginFlags = Pick<GoogleSearchConsoleCliFlags, "envFile"> & {
+export type GoogleSearchConsoleOAuthLoginFlags = Pick<GoogleSearchConsoleCliFlags, "envFile" | "profile"> & {
   readonly agent?: boolean
   readonly callbackUrl?: string
   readonly clientId?: string

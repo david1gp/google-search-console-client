@@ -11,6 +11,7 @@ const googleSearchConsoleCliStringOption = (brief: string, placeholder: string) 
 export const googleSearchConsoleCliOptions: {
   readonly [K in keyof GoogleSearchConsoleCliFlags]-?: ReturnType<typeof googleSearchConsoleCliStringOption>
 } = {
+  profile: googleSearchConsoleCliStringOption("Credential profile", "name"),
   accessToken: googleSearchConsoleCliStringOption("OAuth bearer access token", "token"),
   apiKey: googleSearchConsoleCliStringOption("Mobile-Friendly Testing API key (alias)", "api-key"),
   mobileFriendlyApiKey: googleSearchConsoleCliStringOption("Mobile-Friendly Testing API key", "api-key"),
@@ -30,4 +31,5 @@ export const googleSearchConsoleOAuthLoginOptions = {
   clientSecret: googleSearchConsoleCliStringOption("Optional OAuth desktop client secret", "client-secret"),
   credentialsFile: googleSearchConsoleCliStringOption("Path to save OAuth credentials", "path"),
   envFile: googleSearchConsoleCliOptions.envFile,
+  profile: googleSearchConsoleCliOptions.profile,
 }
