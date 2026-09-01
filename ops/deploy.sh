@@ -6,4 +6,3 @@ bun run format
 bun run check
 bun run test
 bun run build
-echo "Build and tests complete. Publish via: bun run release"
