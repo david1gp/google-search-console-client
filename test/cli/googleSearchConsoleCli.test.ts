@@ -20,6 +20,7 @@ describe("Google Search Console CLI", () => {
       "sitemaps",
       "sites",
       "urlInspection",
+      "version",
     ])
   })
 
@@ -28,6 +29,32 @@ describe("Google Search Console CLI", () => {
     expect(result.exitCode).toBe(0)
     expect(result.stderr).toBe("")
     expect(JSON.parse(result.stdout)).toEqual({ success: true, data: packageVersion })
+  })
+
+  it("preserves plain version output for the version command", async () => {
+    const result = await googleSearchConsoleCliRunResult(["version"], {})
+    expect(result.exitCode).toBe(0)
+    expect(result.stderr).toBe("")
+    expect(JSON.parse(result.stdout)).toEqual({ success: true, data: packageVersion })
+  })
+
+  it("prints package and environment metadata for version --verbose", async () => {
+    const result = await googleSearchConsoleCliRunResult(["version", "--verbose"], {})
+    expect(result.exitCode).toBe(0)
+    expect(result.stderr).toBe("")
+
+    const rendered = JSON.parse(result.stdout).data as string
+    expect(rendered).toContain(`${packageVersion}\n`)
+    expect(rendered).toContain(`user agent: @adaptive-ds/google-search-console-client/${packageVersion}`)
+    expect(rendered).toContain("description: TypeScript Result-based API client for Google Search Console API.")
+    expect(rendered).toContain("license: MIT")
+    expect(rendered).toContain("project: https://github.com/david1gp/google-search-console-client")
+    expect(rendered).toContain("installation type: development checkout")
+    expect(rendered).toContain(`runtime: bun ${Bun.version}`)
+    expect(rendered).toContain("runtime requirements: unavailable")
+    expect(rendered).toContain(`platform: ${process.platform} ${process.arch} (OS release `)
+    expect(rendered).not.toContain("build details:")
+    expect(rendered).toMatch(/executable: .+\nexecutable target: .+\n/)
   })
 
   it("loads validated credentials with flag, environment, and env-file precedence", async () => {
