@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import * as root from "@adaptive-ds/google-search-console-client"
+import * as domainOnboarding from "@adaptive-ds/google-search-console-client/domainOnboarding"
 import * as mobileFriendlyTest from "@adaptive-ds/google-search-console-client/mobileFriendlyTest"
 import * as searchAnalytics from "@adaptive-ds/google-search-console-client/searchAnalytics"
 import * as sitemaps from "@adaptive-ds/google-search-console-client/sitemaps"
@@ -14,6 +15,8 @@ describe("package endpoint exports", () => {
     expect(typeof searchAnalytics.searchAnalyticsQuery).toBe("function")
     expect(typeof urlInspection.urlInspectionIndexInspect).toBe("function")
     expect(typeof mobileFriendlyTest.mobileFriendlyTestRun).toBe("function")
+    expect(typeof domainOnboarding.cloudflareDnsTxtEnsure).toBe("function")
+    expect(typeof domainOnboarding.googleSearchConsoleDomainOnboard).toBe("function")
     expect(typeof root.googleSearchConsoleOAuthAuthorizationCodeExchange).toBe("function")
     expect(typeof root.googleSearchConsoleOAuthCredentialsPersist).toBe("function")
   })

@@ -2,6 +2,7 @@ import { randomInt } from "node:crypto"
 import { dirname, join } from "node:path"
 import { buildCommand } from "@stricli/core"
 import { createResult, createResultError, type Result } from "#result"
+import { googleSearchConsoleOAuthOnboardingScope } from "../../shared/googleSearchConsoleOAuthOnboardingScope.js"
 import type { GoogleSearchConsoleCliEnvironment } from "../googleSearchConsoleCliConfigCreate.js"
 import {
   googleSearchConsoleCliOAuthClientConfigResolve,
@@ -108,6 +109,7 @@ async function googleSearchConsoleOAuthLoginCommandExecute(
     googleSearchConsoleCliResultWrite(context.process, createResultError(op, "OAuth client secret cannot be empty"))
     return
   }
+  const requestedScope = flags.onboardingScope ? googleSearchConsoleOAuthOnboardingScope : undefined
 
   const stateResult = googleSearchConsoleOAuthStateCreate()
   if (!stateResult.success) {
@@ -129,6 +131,7 @@ async function googleSearchConsoleOAuthLoginCommandExecute(
       pkceResult.data.codeVerifier,
       pkceResult.data.codeChallenge,
       stateResult.data,
+      requestedScope,
       credentialsFile,
       pendingStateFile,
       flags.profile ?? "default",
@@ -144,6 +147,7 @@ async function googleSearchConsoleOAuthLoginCommandExecute(
     pkceResult.data.codeChallenge,
     stateResult.data,
     clientConfigResult.data.tokenUrl,
+    requestedScope,
     credentialsFile,
     pendingStateFile,
     flags.profile ?? "default",
@@ -185,6 +189,7 @@ async function googleSearchConsoleOAuthLoginAgentStart(
   codeVerifier: string,
   codeChallenge: string,
   state: string,
+  scope: string | undefined,
   credentialsFile: string,
   pendingStateFile: string,
   profile: string,
@@ -201,6 +206,7 @@ async function googleSearchConsoleOAuthLoginAgentStart(
     clientSecret,
     tokenUrl ?? googleSearchConsoleOAuthDefaultTokenUrl,
     codeVerifier,
+    scope,
     state,
     redirectResult.data,
     profile,
@@ -214,6 +220,7 @@ async function googleSearchConsoleOAuthLoginAgentStart(
     clientId,
     codeChallenge,
     redirectUri: redirectResult.data,
+    scope,
     state,
   })
   if (!authorizationUrlResult.success) {
@@ -239,6 +246,7 @@ async function googleSearchConsoleOAuthLoginBrowserStart(
   codeChallenge: string,
   state: string,
   tokenUrl: string | undefined,
+  scope: string | undefined,
   credentialsFile: string,
   pendingStateFile: string,
   profile: string,
@@ -266,6 +274,7 @@ async function googleSearchConsoleOAuthLoginBrowserStart(
     clientSecret,
     tokenUrl ?? googleSearchConsoleOAuthDefaultTokenUrl,
     codeVerifier,
+    scope,
     state,
     listener.redirectUri,
     profile,
@@ -280,6 +289,7 @@ async function googleSearchConsoleOAuthLoginBrowserStart(
     clientId,
     codeChallenge,
     redirectUri: listener.redirectUri,
+    scope,
     state,
   })
   if (!authorizationUrlResult.success) {
@@ -347,6 +357,7 @@ function googleSearchConsoleOAuthLoginPendingStatePersist(
   clientSecret: string | undefined,
   tokenUrl: string | undefined,
   codeVerifier: string,
+  scope: string | undefined,
   state: string,
   redirectUri: string,
   profile: string,
@@ -358,6 +369,7 @@ function googleSearchConsoleOAuthLoginPendingStatePersist(
     createdAt: Date.now(),
     profile,
     redirectUri,
+    ...(scope === undefined ? {} : { scope }),
     state,
     tokenUrl: tokenUrl ?? googleSearchConsoleOAuthDefaultTokenUrl,
   })

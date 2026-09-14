@@ -60,6 +60,7 @@ export {
   siteAddCommand,
   siteDeleteCommand,
   siteGetCommand,
+  siteOnboardCommand,
   sitesListCommand,
   sitesRouteMap,
 } from "./cli/sites/index.js"
@@ -67,6 +68,15 @@ export {
   urlInspectionIndexInspectCommand,
   urlInspectionRouteMap,
 } from "./cli/urlInspection/index.js"
+export {
+  cloudflareDnsTxtEnsure,
+  cloudflareZoneFindByDomain,
+  type DomainName,
+  domainNameSchema,
+  googleSearchConsoleDomainOnboard,
+  googleSiteVerificationInsert,
+  googleSiteVerificationTokenGet,
+} from "./domainOnboarding/index.js"
 export {
   type GoogleSearchConsoleClient,
   googleSearchConsoleClientCreate,
@@ -127,7 +137,9 @@ export {
   type GoogleSearchConsoleOAuthConfigInput,
   googleSearchConsoleOAuthConfigSchema,
 } from "./shared/googleSearchConsoleOAuthConfigSchema.js"
+export { googleSearchConsoleOAuthOnboardingScope } from "./shared/googleSearchConsoleOAuthOnboardingScope.js"
 export { googleSearchConsoleOAuthScope } from "./shared/googleSearchConsoleOAuthScope.js"
+export { googleSearchConsoleOAuthScopeMatches } from "./shared/googleSearchConsoleOAuthScopeMatches.js"
 export { googleSearchConsoleOAuthTokenResolve } from "./shared/googleSearchConsoleOAuthTokenResolve.js"
 export {
   type GoogleSearchConsoleOAuthTokenResponse,

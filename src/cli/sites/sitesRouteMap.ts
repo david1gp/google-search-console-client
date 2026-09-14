@@ -3,6 +3,7 @@ import type { GoogleSearchConsoleCommandContext } from "../googleSearchConsoleCo
 import { siteAddCommand } from "./siteAddCommand.js"
 import { siteDeleteCommand } from "./siteDeleteCommand.js"
 import { siteGetCommand } from "./siteGetCommand.js"
+import { siteOnboardCommand } from "./siteOnboardCommand.js"
 import { sitesListCommand } from "./sitesListCommand.js"
 
 export const sitesRouteMap: RouteMap<GoogleSearchConsoleCommandContext> = buildRouteMap({
@@ -11,6 +12,7 @@ export const sitesRouteMap: RouteMap<GoogleSearchConsoleCommandContext> = buildR
     get: siteGetCommand,
     add: siteAddCommand,
     delete: siteDeleteCommand,
+    onboard: siteOnboardCommand,
   },
   docs: {
     brief: "Manage Search Console sites",

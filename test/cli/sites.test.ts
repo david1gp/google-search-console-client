@@ -8,7 +8,13 @@ import { sitesRouteMap } from "../../src/cli/sites/sitesRouteMap.js"
 
 describe("Sites CLI commands", () => {
   it("exposes composable list, get, add, and delete routes", () => {
-    expect(sitesRouteMap.getAllEntries().map((entry) => entry.name.original)).toEqual(["list", "get", "add", "delete"])
+    expect(sitesRouteMap.getAllEntries().map((entry) => entry.name.original)).toEqual([
+      "list",
+      "get",
+      "add",
+      "delete",
+      "onboard",
+    ])
   })
 
   it("aggregates sites in default-first profile order and preserves permission levels", async () => {

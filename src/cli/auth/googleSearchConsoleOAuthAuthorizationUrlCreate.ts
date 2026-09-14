@@ -6,6 +6,7 @@ export type GoogleSearchConsoleOAuthAuthorizationUrlCreateOptions = {
   readonly clientId: string
   readonly codeChallenge: string
   readonly redirectUri: string
+  readonly scope?: string
   readonly state: string
 }
 
@@ -24,7 +25,7 @@ export function googleSearchConsoleOAuthAuthorizationUrlCreate(
       prompt: "consent",
       redirect_uri: options.redirectUri,
       response_type: "code",
-      scope: googleSearchConsoleOAuthScope,
+      scope: options.scope ?? googleSearchConsoleOAuthScope,
       state: options.state,
     }).toString()
     return createResult(url.toString())

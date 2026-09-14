@@ -94,6 +94,7 @@ Credential and configuration options:
 - `--access-token`, `GOOGLE_SEARCH_CONSOLE_ACCESS_TOKEN`, or `GOOGLE_ACCESS_TOKEN`
 - `--mobile-friendly-api-key` (or compatibility alias `--api-key`), `GOOGLE_SEARCH_CONSOLE_MOBILE_FRIENDLY_API_KEY`, `GOOGLE_SEARCH_CONSOLE_API_KEY`, or `GOOGLE_API_KEY`
 - `--env-file <path>` to load either credential from a dotenv-style file
+- `CLOUDFLARE_API_TOKEN` for `sites onboard` (also read from `--env-file`)
 - `--base-url <url>` / `GOOGLE_SEARCH_CONSOLE_BASE_URL` and `--url-inspection-base-url <url>` / `GOOGLE_SEARCH_CONSOLE_URL_INSPECTION_BASE_URL` for endpoint testing
 - `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID`, `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_SECRET`, `GOOGLE_SEARCH_CONSOLE_OAUTH_REFRESH_TOKEN`, and optional `GOOGLE_SEARCH_CONSOLE_OAUTH_TOKEN_URL` for refresh-token OAuth
 
@@ -101,13 +102,13 @@ OAuth variables can be supplied directly in the process environment or with `--e
 
 ### Authorize with `auth login`
 
-`google-search-console auth login` runs an OAuth authorization-code flow with PKCE and requests exactly the `https://www.googleapis.com/auth/webmasters` scope. It saves the resulting refresh credentials to the selected credential profile. Without `--profile`, it uses the implicit `default` profile. A desktop OAuth client ID is required; pass it with `--client-id`, `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID`, an env file, or an existing credentials file. A desktop client secret is optional because desktop clients may be public; if supplied, use `--client-secret`, `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_SECRET`, an env file, or an existing credentials file. PKCE is used with or without a secret.
+`google-search-console auth login` runs an OAuth authorization-code flow with PKCE and requests exactly the `https://www.googleapis.com/auth/webmasters` scope by default. It saves the resulting refresh credentials to the selected credential profile. Use `--onboarding-scope` when the profile will run domain onboarding; this additionally requests `https://www.googleapis.com/auth/siteverification.verify_only`. Without `--profile`, it uses the implicit `default` profile. A desktop OAuth client ID is required; pass it with `--client-id`, `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID`, an env file, or an existing credentials file. A desktop client secret is optional because desktop clients may be public; if supplied, use `--client-secret`, `GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_SECRET`, an env file, or an existing credentials file. PKCE is used with or without a secret.
 
 In normal mode, the command starts a loopback listener on `127.0.0.1`, opens Google's authorization page with the platform browser launcher, and waits for the callback. It does not read stdin:
 
 ```bash
 export GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID="your-desktop-client-id"
-google-search-console auth login
+google-search-console auth login --profile contentoren --onboarding-scope
 ```
 
 On success, JSON is written to stdout:
@@ -128,7 +129,7 @@ The `data` object contains `authorizationUrl`, `callbackUrl`, `credentialsFile`,
 google-search-console auth login --callback-url 'PASTE_COMPLETE_LOOPBACK_REDIRECT_URL' --credentials-file '/home/me/.config/google-search-console/credentials.json' --profile 'default'
 ```
 
-The callback URL contains the authorization code and state; treat it as sensitive and do not publish it. A successful completion prints the same `status: "authorized"` JSON as normal mode. The authorization grant must resolve to the exact Webmasters scope; credentials are not saved when the callback reports a different scope or the token response omits or differs from it.
+The callback URL contains the authorization code and state; treat it as sensitive and do not publish it. A successful completion prints the same `status: "authorized"` JSON as normal mode. The authorization grant must resolve to the requested scope set (Webmasters by default, or Webmasters plus `siteverification.verify_only` with `--onboarding-scope`); credentials are not saved when the callback reports a different scope or the token response omits or differs from it.
 
 ### Credential profiles and storage
 
@@ -201,6 +202,40 @@ This discovers `default` (when its credentials file exists) and named profile di
 
 `--all-profiles` cannot be combined with `--profile` or `GOOGLE_SEARCH_CONSOLE_CREDENTIALS_FILE`. It fails if no profiles are configured or if any profile cannot be loaded or queried. Without `--all-profiles`, `sites list` keeps its existing response shape and uses exactly one profile; for example, `google-search-console sites list --profile work` still emits `{"success":true,"data":{"siteEntry":[{"siteUrl":"https://example.net/","permissionLevel":"siteFullUser"}]}}` without adding a `profile` property.
 
+### Domain onboarding
+
+`sites onboard` obtains a Google DNS TXT verification token, preserves unrelated Cloudflare DNS records, ensures the exact TXT record, retries verification, and adds the `sc-domain:<domain>` property. It requires `CLOUDFLARE_API_TOKEN` in the environment or in `--env-file` and uses the selected Google profile:
+
+```bash
+export CLOUDFLARE_API_TOKEN="your-cloudflare-api-token"
+google-search-console sites onboard eventoren.de --profile contentoren
+```
+
+The command performs live Cloudflare and Google mutations. First authorize the profile with `auth login --onboarding-scope`; existing profiles authorized without that opt-in retain their existing scope behavior.
+
+The same onboarding operation is available from TypeScript:
+
+```typescript
+import {
+  googleSearchConsoleClientCreate,
+  googleSearchConsoleDomainOnboard,
+} from "@adaptive-ds/google-search-console-client"
+
+const clientResult = googleSearchConsoleClientCreate({
+  oauth: {
+    clientId: process.env.GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID!,
+    refreshToken: process.env.GOOGLE_SEARCH_CONSOLE_OAUTH_REFRESH_TOKEN!,
+  },
+})
+if (!clientResult.success) throw new Error(clientResult.errorMessage)
+
+const result = await googleSearchConsoleDomainOnboard(clientResult.data, "eventoren.de", {
+  cloudflareApiToken: process.env.CLOUDFLARE_API_TOKEN!,
+})
+if (!result.success) throw new Error(`${result.op}: ${result.errorMessage}`)
+console.log(result.data)
+```
+
 ### Create authorized-user JSON safely
 
 A Google installed-app client-secrets download is not itself a credentials file accepted by this package: its values are normally under an `installed` object. To combine it with an existing refresh token without placing secrets in shell history or output, keep the source files private and run a local script that reads them:
@@ -251,6 +286,7 @@ google-search-console sites list
 google-search-console sites get <site-url>
 google-search-console sites add <site-url>
 google-search-console sites delete <site-url>
+google-search-console sites onboard <domain> --profile <name>
 google-search-console sitemaps list <site-url> [sitemap-index]
 google-search-console sitemaps get <site-url> <sitemap-url>
 google-search-console sitemaps submit <site-url> <sitemap-url>
@@ -258,7 +294,7 @@ google-search-console sitemaps delete <site-url> <sitemap-url>
 google-search-console search-analytics query <site-url> <start-date> <end-date>
 google-search-console url-inspection inspect <inspection-url> <site-url>
 google-search-console mobile-friendly-test run <url>
-google-search-console auth login [--agent] [--callback-url url] [--client-id client-id] [--client-secret client-secret] [--credentials-file path] [--env-file path] [--profile name]
+google-search-console auth login [--agent] [--callback-url url] [--client-id client-id] [--client-secret client-secret] [--credentials-file path] [--env-file path] [--onboarding-scope] [--profile name]
 google-search-console sites list --all-profiles
 ```
 

@@ -10,6 +10,7 @@ export const googleSearchConsoleOAuthPendingStateSchema = v.object({
   createdAt: v.pipe(v.number(), v.integer(), v.minValue(0)),
   profile: v.optional(googleSearchConsoleCliProfileNameSchema),
   redirectUri: googleSearchConsoleUrlSchema,
+  scope: v.optional(v.string()),
   state: googleSearchConsoleAccessTokenSchema,
   tokenUrl: v.optional(googleSearchConsoleUrlSchema, "https://oauth2.googleapis.com/token"),
 })

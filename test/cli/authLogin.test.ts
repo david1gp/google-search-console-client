@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { StricliProcess } from "@stricli/core"
 import { googleSearchConsoleCliApplication, googleSearchConsoleCliRun } from "../../src/cli/index.js"
-import { googleSearchConsoleOAuthScope } from "../../src/index.js"
+import { googleSearchConsoleOAuthOnboardingScope, googleSearchConsoleOAuthScope } from "../../src/index.js"
 
 describe("Google Search Console OAuth login command", () => {
   it("renders the documented auth login help without requiring credentials", async () => {
@@ -16,21 +16,62 @@ describe("Google Search Console OAuth login command", () => {
       success: true,
       data:
         "USAGE\n" +
-        "  google-search-console auth login [--agent] [--callback-url url] [--client-id client-id] [--client-secret client-secret] [--credentials-file path] [--env-file path] [--profile name]\n" +
+        "  google-search-console auth login [--agent] [--callback-url url] [--client-id client-id] [--client-secret client-secret] [--credentials-file path] [--env-file path] [--onboarding-scope] [--profile name]\n" +
         "  google-search-console auth login --help\n" +
         "\n" +
         "Authorize Search Console with OAuth\n" +
         "\n" +
         "FLAGS\n" +
-        "     [--agent/--no-agent]  Print the authorization URL and exit without opening a browser\n" +
-        "     [--callback-url]      Complete an existing OAuth authorization\n" +
-        "     [--client-id]         OAuth desktop client ID\n" +
-        "     [--client-secret]     Optional OAuth desktop client secret\n" +
-        "     [--credentials-file]  Path to save OAuth credentials\n" +
-        "     [--env-file]          Load credentials and URLs from a dotenv file\n" +
-        "     [--profile]           Credential profile\n" +
-        "  -h  --help               Print help information and exit",
+        "     [--agent/--no-agent]                        Print the authorization URL and exit without opening a browser\n" +
+        "     [--callback-url]                            Complete an existing OAuth authorization\n" +
+        "     [--client-id]                               OAuth desktop client ID\n" +
+        "     [--client-secret]                           Optional OAuth desktop client secret\n" +
+        "     [--credentials-file]                        Path to save OAuth credentials\n" +
+        "     [--env-file]                                Load credentials and URLs from a dotenv file\n" +
+        "     [--onboarding-scope/--no-onboarding-scope]  Request the additional domain onboarding OAuth scope\n" +
+        "     [--profile]                                 Credential profile\n" +
+        "  -h  --help                                     Print help information and exit",
     })
+  })
+
+  it("requests both OAuth scopes and validates the onboarding grant when opted in", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-login-"))
+    const tokenUrl = "https://oauth.example.test/token"
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = (async (_input, _init) =>
+      Response.json({
+        access_token: "access-token",
+        expires_in: 3600,
+        refresh_token: "refresh-token",
+        scope: googleSearchConsoleOAuthOnboardingScope,
+      })) as typeof fetch
+
+    try {
+      const agentResult = await googleSearchConsoleCliRunResult(
+        ["auth", "login", "--agent", "--onboarding-scope", "--client-id", "client-id"],
+        { HOME: directory, GOOGLE_SEARCH_CONSOLE_OAUTH_TOKEN_URL: tokenUrl },
+      )
+      const agentOutput = JSON.parse(agentResult.stdout)
+      const authorizationUrl = new URL(agentOutput.data.authorizationUrl)
+      expect(authorizationUrl.searchParams.get("scope")).toBe(googleSearchConsoleOAuthOnboardingScope)
+      expect(JSON.parse(await readFile(agentOutput.data.pendingStateFile, "utf8")).scope).toBe(
+        googleSearchConsoleOAuthOnboardingScope,
+      )
+      const state = authorizationUrl.searchParams.get("state")
+      if (state === null) throw new Error("Agent authorization URL did not include state")
+
+      const callbackUrl = `${agentOutput.data.callbackUrl}?code=authorization-code&scope=${encodeURIComponent(
+        googleSearchConsoleOAuthOnboardingScope,
+      )}&state=${encodeURIComponent(state)}`
+      const callbackResult = await googleSearchConsoleCliRunResult(["auth", "login", "--callback-url", callbackUrl], {
+        HOME: directory,
+      })
+      expect(callbackResult.exitCode).toBe(0)
+      expect(JSON.parse(callbackResult.stdout)).toMatchObject({ success: true, data: { status: "authorized" } })
+    } finally {
+      globalThis.fetch = originalFetch
+      await rm(directory, { force: true, recursive: true })
+    }
   })
 
   it("returns an agent handoff without printing secrets or opening a browser", async () => {

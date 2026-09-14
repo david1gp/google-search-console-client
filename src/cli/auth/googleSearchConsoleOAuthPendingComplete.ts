@@ -3,6 +3,7 @@ import * as v from "valibot"
 import { createResult, createResultError, type Result } from "#result"
 import type { GoogleSearchConsoleFetch } from "../../shared/googleSearchConsoleFetch.js"
 import { googleSearchConsoleOAuthScope } from "../../shared/googleSearchConsoleOAuthScope.js"
+import { googleSearchConsoleOAuthScopeMatches } from "../../shared/googleSearchConsoleOAuthScopeMatches.js"
 import { googleSearchConsoleCliProfileNameSchema } from "../googleSearchConsoleCliProfileNameSchema.js"
 import {
   type GoogleSearchConsoleOAuthAuthorizationCodeExchangeOptions,
@@ -47,9 +48,14 @@ export async function googleSearchConsoleOAuthPendingComplete(
     return createResultError(op, "OAuth authorization was denied")
   }
 
+  const requiredScope = pendingResult.data.scope ?? googleSearchConsoleOAuthScope
+
   if (callbackResult.data.code === undefined)
     return createResultError(op, "OAuth callback is missing an authorization code")
-  if (callbackResult.data.scope !== undefined && callbackResult.data.scope !== googleSearchConsoleOAuthScope) {
+  if (
+    callbackResult.data.scope !== undefined &&
+    !googleSearchConsoleOAuthScopeMatches(callbackResult.data.scope, requiredScope)
+  ) {
     const cleanupResult = await googleSearchConsoleOAuthPendingCompleteCleanup(options.pendingStatePath, op)
     if (!cleanupResult.success) return cleanupResult
     return createResultError(op, "OAuth grant did not include the required Search Console scope")
@@ -65,7 +71,10 @@ export async function googleSearchConsoleOAuthPendingComplete(
   }
   const exchangeResult = await googleSearchConsoleOAuthAuthorizationCodeExchange(fetchFn, exchangeOptions)
   if (!exchangeResult.success) return exchangeResult
-  if (exchangeResult.data.scope !== googleSearchConsoleOAuthScope) {
+  if (
+    exchangeResult.data.scope === undefined ||
+    !googleSearchConsoleOAuthScopeMatches(exchangeResult.data.scope, requiredScope)
+  ) {
     const cleanupResult = await googleSearchConsoleOAuthPendingCompleteCleanup(options.pendingStatePath, op)
     if (!cleanupResult.success) return cleanupResult
     return createResultError(op, "OAuth grant did not include the required Search Console scope")

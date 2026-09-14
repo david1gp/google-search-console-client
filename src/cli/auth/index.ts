@@ -1,3 +1,4 @@
+export { googleSearchConsoleOAuthOnboardingScope } from "../../shared/googleSearchConsoleOAuthOnboardingScope.js"
 export { googleSearchConsoleOAuthScope } from "../../shared/googleSearchConsoleOAuthScope.js"
 export {
   type GoogleSearchConsoleOAuthAuthorizationCodeExchangeOptions,

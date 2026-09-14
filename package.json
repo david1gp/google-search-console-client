@@ -89,6 +89,10 @@
       "types": "./dist/mobileFriendlyTest/index.d.ts",
       "import": "./dist/mobileFriendlyTest/index.js"
     },
+    "./domainOnboarding": {
+      "types": "./dist/domainOnboarding/index.d.ts",
+      "import": "./dist/domainOnboarding/index.js"
+    },
     "./*": {
       "types": "./dist/*.d.ts",
       "import": "./dist/*.js"

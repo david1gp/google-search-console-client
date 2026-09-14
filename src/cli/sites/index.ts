@@ -1,5 +1,6 @@
 export { siteAddCommand } from "./siteAddCommand.js"
 export { siteDeleteCommand } from "./siteDeleteCommand.js"
 export { siteGetCommand } from "./siteGetCommand.js"
+export { siteOnboardCommand } from "./siteOnboardCommand.js"
 export { sitesListCommand } from "./sitesListCommand.js"
 export { sitesRouteMap } from "./sitesRouteMap.js"
