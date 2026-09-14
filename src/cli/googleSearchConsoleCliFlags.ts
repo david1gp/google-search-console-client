@@ -14,5 +14,6 @@ export type GoogleSearchConsoleOAuthLoginFlags = Pick<GoogleSearchConsoleCliFlag
   readonly clientId?: string
   readonly clientSecret?: string
   readonly credentialsFile?: string
+  readonly headless?: boolean
   readonly onboardingScope?: boolean
 }

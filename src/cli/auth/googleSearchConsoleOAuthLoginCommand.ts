@@ -2,6 +2,7 @@ import { randomInt } from "node:crypto"
 import { dirname, join } from "node:path"
 import { buildCommand } from "@stricli/core"
 import { createResult, createResultError, type Result } from "#result"
+import { packageVersion } from "../../packageVersion.js"
 import { googleSearchConsoleOAuthOnboardingScope } from "../../shared/googleSearchConsoleOAuthOnboardingScope.js"
 import type { GoogleSearchConsoleCliEnvironment } from "../googleSearchConsoleCliConfigCreate.js"
 import {
@@ -69,10 +70,24 @@ async function googleSearchConsoleOAuthLoginCommandExecute(
 
   const credentialsFile = credentialsFileResult.data
   const pendingStateFile = googleSearchConsoleOAuthLoginPendingStateFileResolve(credentialsFile)
+  if (flags.agent && flags.headless) {
+    googleSearchConsoleCliResultWrite(
+      context.process,
+      createResultError(op, "--agent and --headless cannot be used together"),
+    )
+    return
+  }
   if (flags.agent && flags.callbackUrl !== undefined) {
     googleSearchConsoleCliResultWrite(
       context.process,
       createResultError(op, "--agent and --callback-url cannot be used together"),
+    )
+    return
+  }
+  if (flags.headless && flags.callbackUrl !== undefined) {
+    googleSearchConsoleCliResultWrite(
+      context.process,
+      createResultError(op, "--headless and --callback-url cannot be used together"),
     )
     return
   }
@@ -122,7 +137,7 @@ async function googleSearchConsoleOAuthLoginCommandExecute(
     return
   }
 
-  if (flags.agent) {
+  if (flags.agent || flags.headless) {
     await googleSearchConsoleOAuthLoginAgentStart(
       context,
       clientId,
@@ -135,6 +150,7 @@ async function googleSearchConsoleOAuthLoginCommandExecute(
       credentialsFile,
       pendingStateFile,
       flags.profile ?? "default",
+      flags.headless === true,
     )
     return
   }
@@ -193,6 +209,7 @@ async function googleSearchConsoleOAuthLoginAgentStart(
   credentialsFile: string,
   pendingStateFile: string,
   profile: string,
+  headless: boolean,
 ): Promise<void> {
   const redirectResult = await googleSearchConsoleOAuthLoginAgentRedirectUriCreate(state)
   if (!redirectResult.success) {
@@ -234,7 +251,16 @@ async function googleSearchConsoleOAuthLoginAgentStart(
     credentialsFile,
     pendingStateFile,
     profile,
+    headless,
   )
+  if (headless) {
+    googleSearchConsoleCliResultWrite(
+      context.process,
+      createResult(googleSearchConsoleOAuthLoginHeadlessRender(handoff)),
+      "plain",
+    )
+    return
+  }
   googleSearchConsoleCliResultWrite(context.process, createResult(handoff))
 }
 
@@ -387,8 +413,11 @@ function googleSearchConsoleOAuthLoginHandoffCreate(
   credentialsFile: string,
   pendingStateFile: string,
   profile: string,
+  headless = false,
 ): GoogleSearchConsoleOAuthLoginHandoff {
-  const completionCommand = googleSearchConsoleOAuthLoginCompletionCommandCreate(credentialsFile, profile)
+  const completionCommand = headless
+    ? googleSearchConsoleOAuthLoginHeadlessCompletionCommandCreate(credentialsFile, profile)
+    : googleSearchConsoleOAuthLoginCompletionCommandCreate(credentialsFile, profile)
   return {
     authorizationUrl,
     callbackUrl,
@@ -405,8 +434,27 @@ function googleSearchConsoleOAuthLoginHandoffCreate(
   }
 }
 
+function googleSearchConsoleOAuthLoginHeadlessRender(handoff: GoogleSearchConsoleOAuthLoginHandoff): string {
+  return [
+    "Open this authorization URL in a browser:",
+    handoff.authorizationUrl,
+    "",
+    "After authorization, the browser will show a failed loopback redirect.",
+    "Copy the complete redirect URL from the address bar, including its query string.",
+    "Paste that complete URL in place of PASTE_COMPLETE_LOOPBACK_REDIRECT_URL in this command and run it:",
+    handoff.completionCommand,
+  ].join("\n")
+}
+
 function googleSearchConsoleOAuthLoginCompletionCommandCreate(credentialsFile: string, profile: string): string {
   return `google-search-console auth login --callback-url 'PASTE_COMPLETE_LOOPBACK_REDIRECT_URL' --credentials-file ${googleSearchConsoleOAuthLoginShellQuote(credentialsFile)} --profile ${googleSearchConsoleOAuthLoginShellQuote(profile)}`
+}
+
+function googleSearchConsoleOAuthLoginHeadlessCompletionCommandCreate(
+  credentialsFile: string,
+  profile: string,
+): string {
+  return `bunx --package @adaptive-ds/google-search-console-client@${packageVersion} google-search-console auth login --callback-url 'PASTE_COMPLETE_LOOPBACK_REDIRECT_URL' --credentials-file ${googleSearchConsoleOAuthLoginShellQuote(credentialsFile)} --profile ${googleSearchConsoleOAuthLoginShellQuote(profile)}`
 }
 
 function googleSearchConsoleOAuthLoginShellQuote(value: string): string {

@@ -31,6 +31,11 @@ export const googleSearchConsoleOAuthLoginOptions = {
   clientSecret: googleSearchConsoleCliStringOption("Optional OAuth desktop client secret", "client-secret"),
   credentialsFile: googleSearchConsoleCliStringOption("Path to save OAuth credentials", "path"),
   envFile: googleSearchConsoleCliOptions.envFile,
+  headless: {
+    brief: "Print human-readable authorization instructions without opening a browser",
+    kind: "boolean" as const,
+    optional: true as const,
+  },
   onboardingScope: {
     brief: "Request the additional domain onboarding OAuth scope",
     kind: "boolean" as const,

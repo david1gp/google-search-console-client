@@ -75,9 +75,18 @@ function googleSearchConsoleCliRunOutputNormalize(value: string, success: boolea
   if (trimmed.length === 0) return undefined
 
   try {
-    JSON.parse(trimmed)
+    const parsed: unknown = JSON.parse(trimmed)
+    if (success && googleSearchConsoleCliRunOutputIsPlain(parsed)) return parsed.data
     return trimmed
   } catch {
     return JSON.stringify(success ? createResult(trimmed) : createResultError("cliOutput", trimmed))
   }
+}
+
+function googleSearchConsoleCliRunOutputIsPlain(
+  value: unknown,
+): value is { readonly data: string; readonly format: "plain" } {
+  if (typeof value !== "object" || value === null) return false
+  if (!("data" in value) || !("format" in value)) return false
+  return typeof value.data === "string" && value.format === "plain"
 }
