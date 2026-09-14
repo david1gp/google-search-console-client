@@ -131,6 +131,14 @@ google-search-console auth login --callback-url 'PASTE_COMPLETE_LOOPBACK_REDIREC
 
 The callback URL contains the authorization code and state; treat it as sensitive and do not publish it. A successful completion prints the same `status: "authorized"` JSON as normal mode. The authorization grant must resolve to the requested scope set (Webmasters by default, or Webmasters plus `siteverification.verify_only` with `--onboarding-scope`); credentials are not saved when the callback reports a different scope or the token response omits or differs from it.
 
+Use `--headless` for the same server-friendly flow with human-readable instructions instead of JSON. It never opens a browser. Include `--onboarding-scope` when the profile will run domain onboarding:
+
+```bash
+google-search-console auth login --headless --onboarding-scope --profile contentoren
+```
+
+The output includes the full authorization URL. Open it on a browser-capable machine; after authorization, Google will show a failed loopback redirect. Copy the complete URL from the address bar, including its query string, and paste it in place of the placeholder in the emitted `bunx --package @adaptive-ds/google-search-console-client@<running-version> google-search-console auth login --callback-url ...` completion command. The command includes the resolved credential path and profile, with shell-safe quoting.
+
 ### Credential profiles and storage
 
 The CLI uses one profile for each normal command. Omit `--profile` to use `default`, or select a named profile with `--profile <name>`:
@@ -294,7 +302,7 @@ google-search-console sitemaps delete <site-url> <sitemap-url>
 google-search-console search-analytics query <site-url> <start-date> <end-date>
 google-search-console url-inspection inspect <inspection-url> <site-url>
 google-search-console mobile-friendly-test run <url>
-google-search-console auth login [--agent] [--callback-url url] [--client-id client-id] [--client-secret client-secret] [--credentials-file path] [--env-file path] [--onboarding-scope] [--profile name]
+google-search-console auth login [--agent] [--callback-url url] [--client-id client-id] [--client-secret client-secret] [--credentials-file path] [--env-file path] [--headless] [--onboarding-scope] [--profile name]
 google-search-console sites list --all-profiles
 ```
 
