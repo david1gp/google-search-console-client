@@ -70,10 +70,9 @@ export const googleSearchConsoleOAuthLoginCommand = buildCommand<
 async function googleSearchConsoleOAuthLoginCommandExecute(
   context: GoogleSearchConsoleCommandContext,
   flags: GoogleSearchConsoleOAuthLoginFlags,
-  positionalCallbackUrl?: string,
+  callbackUrl?: string,
 ): Promise<void> {
   const op = "googleSearchConsoleOAuthLogin"
-  const callbackUrl = positionalCallbackUrl ?? flags.callbackUrl
   const environment = context.process.env ?? {}
   const credentialsFileResult = googleSearchConsoleOAuthLoginCredentialsFileResolve(flags, environment)
   if (!credentialsFileResult.success) {
@@ -83,32 +82,36 @@ async function googleSearchConsoleOAuthLoginCommandExecute(
 
   const credentialsFile = credentialsFileResult.data
   const pendingStateFile = googleSearchConsoleOAuthLoginPendingStateFileResolve(credentialsFile)
-  if (flags.agent && flags.headless) {
+  if (flags.agent && flags.browser) {
     googleSearchConsoleCliResultWrite(
       context.process,
-      createResultError(op, "--agent and --headless cannot be used together"),
+      createResultError(op, "--agent and --browser cannot be used together"),
     )
     return
   }
   if (flags.agent && callbackUrl !== undefined) {
     googleSearchConsoleCliResultWrite(
       context.process,
-      createResultError(op, "--agent and --callback-url cannot be used together"),
+      createResultError(op, "--agent and callback URL cannot be used together"),
     )
     return
   }
-  if (flags.headless && callbackUrl !== undefined) {
+  if (flags.browser && callbackUrl !== undefined) {
     googleSearchConsoleCliResultWrite(
       context.process,
-      createResultError(op, "--headless and --callback-url cannot be used together"),
+      createResultError(op, "--browser and callback URL cannot be used together"),
     )
     return
   }
 
   if (callbackUrl !== undefined) {
+    if (callbackUrl.length === 0) {
+      googleSearchConsoleCliResultWrite(context.process, createResultError(op, "Callback URL cannot be empty"))
+      return
+    }
     await googleSearchConsoleOAuthLoginCallbackComplete(
       context,
-      { ...flags, callbackUrl },
+      callbackUrl,
       credentialsFile,
       pendingStateFile,
       flags.profile,
@@ -150,56 +153,52 @@ async function googleSearchConsoleOAuthLoginCommandExecute(
     return
   }
 
-  if (flags.agent || flags.headless) {
-    await googleSearchConsoleOAuthLoginAgentStart(
+  if (flags.browser) {
+    await googleSearchConsoleOAuthLoginBrowserStart(
       context,
       clientId,
       clientConfigResult.data.clientSecret,
-      clientConfigResult.data.tokenUrl,
       pkceResult.data.codeVerifier,
       pkceResult.data.codeChallenge,
       stateResult.data,
+      clientConfigResult.data.tokenUrl,
       requestedScope,
       credentialsFile,
       pendingStateFile,
       flags.profile ?? "default",
       flags.credentialsFile !== undefined,
-      flags.headless === true,
     )
     return
   }
 
-  await googleSearchConsoleOAuthLoginBrowserStart(
+  await googleSearchConsoleOAuthLoginAgentStart(
     context,
     clientId,
     clientConfigResult.data.clientSecret,
+    clientConfigResult.data.tokenUrl,
     pkceResult.data.codeVerifier,
     pkceResult.data.codeChallenge,
     stateResult.data,
-    clientConfigResult.data.tokenUrl,
     requestedScope,
     credentialsFile,
     pendingStateFile,
     flags.profile ?? "default",
     flags.credentialsFile !== undefined,
+    !flags.agent,
   )
 }
 
 async function googleSearchConsoleOAuthLoginCallbackComplete(
   context: GoogleSearchConsoleCommandContext,
-  flags: GoogleSearchConsoleOAuthLoginFlags,
+  callbackUrl: string,
   credentialsFile: string,
   pendingStateFile: string,
   profile: string | undefined,
 ): Promise<void> {
   const op = "googleSearchConsoleOAuthLogin"
-  if (flags.callbackUrl === undefined || flags.callbackUrl.length === 0) {
-    googleSearchConsoleCliResultWrite(context.process, createResultError(op, "--callback-url cannot be empty"))
-    return
-  }
 
   const completeResult = await googleSearchConsoleOAuthPendingComplete(fetch, {
-    callbackUrl: flags.callbackUrl,
+    callbackUrl,
     credentialsPath: credentialsFile,
     pendingStatePath: pendingStateFile,
     profile,

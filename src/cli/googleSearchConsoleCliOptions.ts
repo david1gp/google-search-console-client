@@ -22,20 +22,19 @@ export const googleSearchConsoleCliOptions: {
 
 export const googleSearchConsoleOAuthLoginOptions = {
   agent: {
-    brief: "Print the authorization URL and exit without opening a browser",
+    brief: "Print the authorization URL as JSON and exit without opening a browser",
     kind: "boolean" as const,
     optional: true as const,
   },
-  callbackUrl: googleSearchConsoleCliStringOption("Complete an existing OAuth authorization", "url"),
+  browser: {
+    brief: "Launch a desktop browser and listen for the loopback redirect automatically",
+    kind: "boolean" as const,
+    optional: true as const,
+  },
   clientId: googleSearchConsoleCliStringOption("OAuth desktop client ID", "client-id"),
   clientSecret: googleSearchConsoleCliStringOption("Optional OAuth desktop client secret", "client-secret"),
   credentialsFile: googleSearchConsoleCliStringOption("Path to save OAuth credentials", "path"),
   envFile: googleSearchConsoleCliOptions.envFile,
-  headless: {
-    brief: "Print human-readable authorization instructions without opening a browser",
-    kind: "boolean" as const,
-    optional: true as const,
-  },
   onboardingScope: {
     brief: "Request the additional domain onboarding OAuth scope",
     kind: "boolean" as const,

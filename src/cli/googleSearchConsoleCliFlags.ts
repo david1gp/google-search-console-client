@@ -10,10 +10,9 @@ export type GoogleSearchConsoleCliFlags = {
 
 export type GoogleSearchConsoleOAuthLoginFlags = Pick<GoogleSearchConsoleCliFlags, "envFile" | "profile"> & {
   readonly agent?: boolean
-  readonly callbackUrl?: string
+  readonly browser?: boolean
   readonly clientId?: string
   readonly clientSecret?: string
   readonly credentialsFile?: string
-  readonly headless?: boolean
   readonly onboardingScope?: boolean
 }

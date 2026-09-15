@@ -20,19 +20,18 @@ describe("Google Search Console OAuth login command", () => {
       success: true,
       data:
         "USAGE\n" +
-        "  google-search-console auth login [--agent] [--callback-url url] [--client-id client-id] [--client-secret client-secret] [--credentials-file path] [--env-file path] [--headless] [--onboarding-scope] [--profile name] [<callback-url>]\n" +
+        "  google-search-console auth login [--agent] [--browser] [--client-id client-id] [--client-secret client-secret] [--credentials-file path] [--env-file path] [--onboarding-scope] [--profile name] [<callback-url>]\n" +
         "  google-search-console auth login --help\n" +
         "\n" +
         "Authorize Search Console with OAuth\n" +
         "\n" +
         "FLAGS\n" +
-        "     [--agent/--no-agent]                        Print the authorization URL and exit without opening a browser\n" +
-        "     [--callback-url]                            Complete an existing OAuth authorization\n" +
+        "     [--agent/--no-agent]                        Print the authorization URL as JSON and exit without opening a browser\n" +
+        "     [--browser/--no-browser]                    Launch a desktop browser and listen for the loopback redirect automatically\n" +
         "     [--client-id]                               OAuth desktop client ID\n" +
         "     [--client-secret]                           Optional OAuth desktop client secret\n" +
         "     [--credentials-file]                        Path to save OAuth credentials\n" +
         "     [--env-file]                                Load credentials and URLs from a dotenv file\n" +
-        "     [--headless/--no-headless]                  Print human-readable authorization instructions without opening a browser\n" +
         "     [--onboarding-scope/--no-onboarding-scope]  Request the additional domain onboarding OAuth scope\n" +
         "     [--profile]                                 Credential profile\n" +
         "  -h  --help                                     Print help information and exit\n" +
@@ -71,7 +70,7 @@ describe("Google Search Console OAuth login command", () => {
       const callbackUrl = `${agentOutput.data.callbackUrl}?code=authorization-code&scope=${encodeURIComponent(
         googleSearchConsoleOAuthOnboardingScope,
       )}&state=${encodeURIComponent(state)}`
-      const callbackResult = await googleSearchConsoleCliRunResult(["auth", "login", "--callback-url", callbackUrl], {
+      const callbackResult = await googleSearchConsoleCliRunResult(["auth", "login", callbackUrl], {
         HOME: directory,
       })
       expect(callbackResult.exitCode).toBe(0)
@@ -145,7 +144,7 @@ describe("Google Search Console OAuth login command", () => {
     }
   })
 
-  it("prints a human-readable headless handoff with a pinned bunx completion command", async () => {
+  it("prints a human-readable headless handoff by default with a pinned bunx completion command", async () => {
     const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-login-"))
     const credentialsFile = join(directory, "credentials' file.json")
 
@@ -154,7 +153,6 @@ describe("Google Search Console OAuth login command", () => {
         [
           "auth",
           "login",
-          "--headless",
           "--onboarding-scope",
           "--client-id",
           "client-id",
@@ -214,7 +212,7 @@ describe("Google Search Console OAuth login command", () => {
         googleSearchConsoleOAuthScope,
       )}&state=${encodeURIComponent(state)}`
 
-      const callbackResult = await googleSearchConsoleCliRunResult(["auth", "login", "--callback-url", callbackUrl], {
+      const callbackResult = await googleSearchConsoleCliRunResult(["auth", "login", callbackUrl], {
         HOME: directory,
       })
       expect(callbackResult.exitCode).toBe(0)
@@ -265,7 +263,7 @@ describe("Google Search Console OAuth login command", () => {
       )}&state=${encodeURIComponent(state)}`
 
       const callbackResult = await googleSearchConsoleCliRunResult(
-        ["auth", "login", "--callback-url", callbackUrl, "--credentials-file", credentialsFile],
+        ["auth", "login", "--credentials-file", credentialsFile, callbackUrl],
         {},
       )
       expect(callbackResult.exitCode).toBe(0)
@@ -399,7 +397,7 @@ describe("Google Search Console OAuth login command", () => {
     }
   })
 
-  it("completes the normal browser flow through the loopback callback", async () => {
+  it("completes the normal browser flow through the loopback callback when --browser is set", async () => {
     if (process.platform !== "linux") return
 
     const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-login-"))
@@ -440,7 +438,7 @@ if (!response.ok) process.exit(1)`,
 
     try {
       const result = await googleSearchConsoleCliRunResult(
-        ["auth", "login", "--client-id", "client-id", "--profile", "work"],
+        ["auth", "login", "--browser", "--client-id", "client-id", "--profile", "work"],
         { HOME: directory, PATH: browserDirectory, GOOGLE_SEARCH_CONSOLE_OAUTH_TOKEN_URL: tokenUrl },
       )
       expect(result.exitCode).toBe(0)
@@ -466,21 +464,13 @@ if (!response.ok) process.exit(1)`,
     }
   })
 
-  it("rejects incompatible agent and callback flags", async () => {
+  it("rejects incompatible agent and callback URL arguments", async () => {
     const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-login-"))
     const credentialsFile = join(directory, "credentials.json")
 
     try {
       const result = await googleSearchConsoleCliRunResult(
-        [
-          "auth",
-          "login",
-          "--agent",
-          "--callback-url",
-          "https://example.test/callback",
-          "--credentials-file",
-          credentialsFile,
-        ],
+        ["auth", "login", "--agent", "--credentials-file", credentialsFile, "https://example.test/callback"],
         {},
       )
       expect(result.exitCode).toBe(1)
@@ -488,28 +478,20 @@ if (!response.ok) process.exit(1)`,
       expect(JSON.parse(result.stderr)).toMatchObject({
         success: false,
         op: "googleSearchConsoleOAuthLogin",
-        errorMessage: "--agent and --callback-url cannot be used together",
+        errorMessage: "--agent and callback URL cannot be used together",
       })
     } finally {
       await rm(directory, { force: true, recursive: true })
     }
   })
 
-  it("rejects incompatible headless and callback flags", async () => {
+  it("rejects incompatible browser and callback URL arguments", async () => {
     const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-login-"))
     const credentialsFile = join(directory, "credentials.json")
 
     try {
       const result = await googleSearchConsoleCliRunResult(
-        [
-          "auth",
-          "login",
-          "--headless",
-          "--callback-url",
-          "https://example.test/callback",
-          "--credentials-file",
-          credentialsFile,
-        ],
+        ["auth", "login", "--browser", "--credentials-file", credentialsFile, "https://example.test/callback"],
         {},
       )
       expect(result.exitCode).toBe(1)
@@ -517,7 +499,7 @@ if (!response.ok) process.exit(1)`,
       expect(JSON.parse(result.stderr)).toMatchObject({
         success: false,
         op: "googleSearchConsoleOAuthLogin",
-        errorMessage: "--headless and --callback-url cannot be used together",
+        errorMessage: "--browser and callback URL cannot be used together",
       })
     } finally {
       await rm(directory, { force: true, recursive: true })
@@ -537,7 +519,7 @@ if (!response.ok) process.exit(1)`,
 
     try {
       const result = await googleSearchConsoleCliRunResult(
-        ["auth", "login", "--client-id", "client-id", "--credentials-file", credentialsFile],
+        ["auth", "login", "--browser", "--client-id", "client-id", "--credentials-file", credentialsFile],
         { PATH: browserDirectory },
       )
       expect(result.exitCode).toBe(1)
