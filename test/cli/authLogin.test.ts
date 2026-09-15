@@ -20,7 +20,7 @@ describe("Google Search Console OAuth login command", () => {
       success: true,
       data:
         "USAGE\n" +
-        "  google-search-console auth login [--agent] [--callback-url url] [--client-id client-id] [--client-secret client-secret] [--credentials-file path] [--env-file path] [--headless] [--onboarding-scope] [--profile name]\n" +
+        "  google-search-console auth login [--agent] [--callback-url url] [--client-id client-id] [--client-secret client-secret] [--credentials-file path] [--env-file path] [--headless] [--onboarding-scope] [--profile name] [<callback-url>]\n" +
         "  google-search-console auth login --help\n" +
         "\n" +
         "Authorize Search Console with OAuth\n" +
@@ -35,7 +35,10 @@ describe("Google Search Console OAuth login command", () => {
         "     [--headless/--no-headless]                  Print human-readable authorization instructions without opening a browser\n" +
         "     [--onboarding-scope/--no-onboarding-scope]  Request the additional domain onboarding OAuth scope\n" +
         "     [--profile]                                 Credential profile\n" +
-        "  -h  --help                                     Print help information and exit",
+        "  -h  --help                                     Print help information and exit\n" +
+        "\n" +
+        "ARGUMENTS\n" +
+        "  [callback-url]  Complete an existing OAuth authorization using the redirect URL",
     })
   })
 
@@ -133,8 +136,9 @@ describe("Google Search Console OAuth login command", () => {
       const output = JSON.parse(result.stdout)
       expect(output.data.credentialsFile).toBe(credentialsFile)
       expect(output.data.pendingStateFile).toBe(join(directory, ".config/google-search-console/.oauth-pending.json"))
-      expect(output.data.completionCommand).toContain(`--credentials-file '${credentialsFile}'`)
-      expect(output.data.completionCommand).toContain("--profile 'default'")
+      expect(output.data.completionCommand).toBe(
+        "google-search-console auth login 'PASTE_COMPLETE_LOOPBACK_REDIRECT_URL'",
+      )
       expect(output.data.profile).toBe("default")
     } finally {
       await rm(directory, { force: true, recursive: true })
@@ -170,7 +174,7 @@ describe("Google Search Console OAuth login command", () => {
       expect(handoff).toContain("Open this authorization URL in a browser:\nhttps://accounts.google.com/")
       expect(handoff).toContain("Copy the complete redirect URL from the address bar, including its query string.")
       expect(handoff).toContain(
-        `bunx --package @adaptive-ds/google-search-console-client@${packageVersion} google-search-console auth login --callback-url 'PASTE_COMPLETE_LOOPBACK_REDIRECT_URL' --credentials-file '${credentialsFile.replaceAll("'", "'\\''")}' --profile 'work'`,
+        `bunx --package @adaptive-ds/google-search-console-client@${packageVersion} google-search-console auth login --credentials-file '${credentialsFile.replaceAll("'", "'\\''")}' --profile 'work' 'PASTE_COMPLETE_LOOPBACK_REDIRECT_URL'`,
       )
       expect(handoff).toContain("scope=")
     } finally {
@@ -368,7 +372,7 @@ describe("Google Search Console OAuth login command", () => {
       )}&state=${encodeURIComponent(state)}`
 
       const callbackResult = await googleSearchConsoleCliRunResult(
-        ["auth", "login", "--callback-url", callbackUrl, "--profile", "work"],
+        ["auth", "login", "--profile", "work", callbackUrl],
         { HOME: directory },
       )
       expect(callbackResult.exitCode).toBe(0)

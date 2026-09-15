@@ -126,7 +126,7 @@ google-search-console auth login --agent --client-id "$GOOGLE_SEARCH_CONSOLE_OAU
 The `data` object contains `authorizationUrl`, `callbackUrl`, `credentialsFile`, `completionCommand`, `instructions`, `pendingStateFile`, `profile`, and `status: "pending"`. Open `authorizationUrl` in a browser. Because agent mode does not run the loopback listener, the browser will show a failed loopback redirect after authorization. Copy the complete redirect URL from the address bar, replace the placeholder in `completionCommand`, and run it on the machine that created the pending state:
 
 ```bash
-google-search-console auth login --callback-url 'PASTE_COMPLETE_LOOPBACK_REDIRECT_URL' --credentials-file '/home/me/.config/google-search-console/credentials.json' --profile 'default'
+google-search-console auth login 'PASTE_COMPLETE_LOOPBACK_REDIRECT_URL'
 ```
 
 The callback URL contains the authorization code and state; treat it as sensitive and do not publish it. A successful completion prints the same `status: "authorized"` JSON as normal mode. The authorization grant must resolve to the requested scope set (Webmasters by default, or Webmasters plus `siteverification.verify_only` with `--onboarding-scope`); credentials are not saved when the callback reports a different scope or the token response omits or differs from it.
@@ -137,7 +137,7 @@ Use `--headless` for the same server-friendly flow with human-readable instructi
 google-search-console auth login --headless --onboarding-scope --profile contentoren
 ```
 
-The output includes the full authorization URL. Open it on a browser-capable machine; after authorization, Google will show a failed loopback redirect. Copy the complete URL from the address bar, including its query string, and paste it in place of the placeholder in the emitted `bunx --package @adaptive-ds/google-search-console-client@<running-version> google-search-console auth login --callback-url ...` completion command. The command includes the resolved credential path and profile, with shell-safe quoting.
+The output includes the full authorization URL. Open it on a browser-capable machine; after authorization, Google will show a failed loopback redirect. Copy the complete URL from the address bar, including its query string, and paste it in place of the placeholder in the emitted `bunx --package @adaptive-ds/google-search-console-client@<running-version> google-search-console auth login ...` completion command. The command includes the profile (and credentials path if customized), with shell-safe quoting.
 
 ### Credential profiles and storage
 
@@ -302,7 +302,7 @@ google-search-console sitemaps delete <site-url> <sitemap-url>
 google-search-console search-analytics query <site-url> <start-date> <end-date>
 google-search-console url-inspection inspect <inspection-url> <site-url>
 google-search-console mobile-friendly-test run <url>
-google-search-console auth login [--agent] [--callback-url url] [--client-id client-id] [--client-secret client-secret] [--credentials-file path] [--env-file path] [--headless] [--onboarding-scope] [--profile name]
+google-search-console auth login [--agent] [--callback-url url] [--client-id client-id] [--client-secret client-secret] [--credentials-file path] [--env-file path] [--headless] [--onboarding-scope] [--profile name] [<callback-url>]
 google-search-console sites list --all-profiles
 ```
 
