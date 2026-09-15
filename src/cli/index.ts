@@ -10,6 +10,10 @@ export {
   googleSearchConsoleCliOAuthClientConfigResolve,
   googleSearchConsoleCliProfileCredentialsFilePathResolve,
 } from "./googleSearchConsoleCliConfigCreate.js"
+export {
+  type GoogleSearchConsoleCliDiscoveredOAuthClientCredentials,
+  googleSearchConsoleCliOAuthClientCredentialsDiscover,
+} from "./googleSearchConsoleCliOAuthClientCredentialsDiscover.js"
 export type { GoogleSearchConsoleCliFlags, GoogleSearchConsoleOAuthLoginFlags } from "./googleSearchConsoleCliFlags.js"
 export { googleSearchConsoleCliOptions } from "./googleSearchConsoleCliOptions.js"
 export {

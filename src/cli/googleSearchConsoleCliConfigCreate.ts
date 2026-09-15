@@ -10,6 +10,7 @@ import { googleSearchConsoleConfigSchema } from "../shared/googleSearchConsoleCo
 import { googleSearchConsoleOAuthConfigSchema } from "../shared/googleSearchConsoleOAuthConfigSchema.js"
 import { googleSearchConsoleUrlSchema } from "../shared/googleSearchConsoleUrlSchema.js"
 import { googleSearchConsoleCliEnvFileParse } from "./googleSearchConsoleCliEnvFileParse.js"
+import { googleSearchConsoleCliOAuthClientCredentialsDiscover } from "./googleSearchConsoleCliOAuthClientCredentialsDiscover.js"
 import { googleSearchConsoleCliProfileNameSchema } from "./googleSearchConsoleCliProfileNameSchema.js"
 
 export type GoogleSearchConsoleCliEnvironment = Readonly<Record<string, string | undefined>>
@@ -225,12 +226,30 @@ export async function googleSearchConsoleCliOAuthClientConfigResolve(
   )
   if (!credentialsFileResult.success) return createResultError(op, credentialsFileResult.errorMessage)
 
+  let discoveredCredentials: { readonly clientId?: string; readonly clientSecret?: string } = {}
+  const candidateClientId =
+    options.clientId ??
+    environment.GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID ??
+    environment.GOOGLE_AUTOMATION_CLIENT_KEY ??
+    fileValues.GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID ??
+    fileValues.GOOGLE_AUTOMATION_CLIENT_KEY ??
+    credentialsFileResult.data.oauth?.clientId ??
+    credentialsFileResult.data.client_id
+
+  if (candidateClientId === undefined) {
+    const discoverResult = await googleSearchConsoleCliOAuthClientCredentialsDiscover(environment)
+    if (discoverResult.success) {
+      discoveredCredentials = discoverResult.data
+    }
+  }
+
   const resolved = googleSearchConsoleCliOAuthConfigResolve(
     environment,
     fileValues,
     credentialsFileResult.data,
     undefined,
     options,
+    discoveredCredentials,
   )
   return createResult(resolved ?? {})
 }
@@ -302,19 +321,26 @@ function googleSearchConsoleCliOAuthConfigResolve(
   credentialsFileValues: GoogleSearchConsoleCliCredentialsFileValues,
   accessToken: string | undefined,
   overrides: Pick<GoogleSearchConsoleCliOAuthClientConfigResolveOptions, "clientId" | "clientSecret"> = {},
+  discoveredCredentials: { readonly clientId?: string; readonly clientSecret?: string } = {},
 ): Record<string, string> | undefined {
   const clientId =
     overrides.clientId ??
     environment.GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID ??
+    environment.GOOGLE_AUTOMATION_CLIENT_KEY ??
     fileValues.GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_ID ??
+    fileValues.GOOGLE_AUTOMATION_CLIENT_KEY ??
     credentialsFileValues.oauth?.clientId ??
-    credentialsFileValues.client_id
+    credentialsFileValues.client_id ??
+    discoveredCredentials.clientId
   const clientSecret =
     overrides.clientSecret ??
     environment.GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_SECRET ??
+    environment.GOOGLE_AUTOMATION_SECRET_KEY ??
     fileValues.GOOGLE_SEARCH_CONSOLE_OAUTH_CLIENT_SECRET ??
+    fileValues.GOOGLE_AUTOMATION_SECRET_KEY ??
     credentialsFileValues.oauth?.clientSecret ??
-    credentialsFileValues.client_secret
+    credentialsFileValues.client_secret ??
+    discoveredCredentials.clientSecret
   const refreshToken =
     environment.GOOGLE_SEARCH_CONSOLE_OAUTH_REFRESH_TOKEN ??
     fileValues.GOOGLE_SEARCH_CONSOLE_OAUTH_REFRESH_TOKEN ??
