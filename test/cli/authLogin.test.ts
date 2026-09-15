@@ -546,6 +546,72 @@ if (!response.ok) process.exit(1)`,
       await rm(directory, { force: true, recursive: true })
     }
   })
+
+  it("automatically discovers client ID from GOOGLE_AUTOMATION_CLIENT_KEY", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-login-"))
+
+    try {
+      const result = await googleSearchConsoleCliRunResult(["auth", "login", "--agent"], {
+        HOME: directory,
+        GOOGLE_AUTOMATION_CLIENT_KEY: "automation-client-id",
+        GOOGLE_AUTOMATION_SECRET_KEY: "automation-client-secret",
+      })
+      expect(result.exitCode).toBe(0)
+      const output = JSON.parse(result.stdout)
+      expect(output.success).toBe(true)
+      const authUrl = new URL(output.data.authorizationUrl)
+      expect(authUrl.searchParams.get("client_id")).toBe("automation-client-id")
+    } finally {
+      await rm(directory, { force: true, recursive: true })
+    }
+  })
+
+  it("automatically discovers client ID from default credentials.json for a new named profile", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-login-"))
+    const configDir = join(directory, ".config/google-search-console")
+    await mkdir(configDir, { recursive: true, mode: 0o700 })
+    await writeFile(
+      join(configDir, "credentials.json"),
+      JSON.stringify({ client_id: "discovered-from-default", client_secret: "secret-default" }),
+    )
+
+    try {
+      const result = await googleSearchConsoleCliRunResult(
+        ["auth", "login", "--agent", "--profile", "brand-new-profile"],
+        { HOME: directory },
+      )
+      expect(result.exitCode).toBe(0)
+      const output = JSON.parse(result.stdout)
+      expect(output.success).toBe(true)
+      const authUrl = new URL(output.data.authorizationUrl)
+      expect(authUrl.searchParams.get("client_id")).toBe("discovered-from-default")
+    } finally {
+      await rm(directory, { force: true, recursive: true })
+    }
+  })
+
+  it("automatically discovers client ID across existing profiles when default credentials do not exist", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "google-search-console-cli-login-"))
+    const profileDir = join(directory, ".config/google-search-console/profiles/existing-profile")
+    await mkdir(profileDir, { recursive: true, mode: 0o700 })
+    await writeFile(
+      join(profileDir, "credentials.json"),
+      JSON.stringify({ client_id: "discovered-from-profile", client_secret: "secret-profile" }),
+    )
+
+    try {
+      const result = await googleSearchConsoleCliRunResult(["auth", "login", "--agent"], {
+        HOME: directory,
+      })
+      expect(result.exitCode).toBe(0)
+      const output = JSON.parse(result.stdout)
+      expect(output.success).toBe(true)
+      const authUrl = new URL(output.data.authorizationUrl)
+      expect(authUrl.searchParams.get("client_id")).toBe("discovered-from-profile")
+    } finally {
+      await rm(directory, { force: true, recursive: true })
+    }
+  })
 })
 
 async function googleSearchConsoleCliRunResult(
