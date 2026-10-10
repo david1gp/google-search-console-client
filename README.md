@@ -413,7 +413,7 @@ const noDataResponse: SearchAnalyticsQueryResponse = {}
 ## Development
 
 - `bun run format` - Format source and tests with Biome
-- `bun run check` - Type-check source and tests
+- `bun check` - Type-check source and tests
 - `bun run test` - Build and run tests
 - `bun run build` - Compile declarations and ESM output to `dist/`
 - `bun run release` - Generate a changelog and GitHub release
