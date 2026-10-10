@@ -34,7 +34,7 @@
     "test": "bun run build && bun test",
     "test:w": "bun test --watch",
     "build": "rm -rf ./dist && bun tsc -p ./tsconfig.lib.json && chmod +x ./dist/cli.js",
-    "check": "bun tsc --noEmit",
+    "check": "bun --check",
     "release": "bash ./ops/release.sh",
     "update": "bun update",
     "format": "biome format --write src test package.json tsconfig.json tsconfig.lib.json biome.json",
