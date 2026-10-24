@@ -25,6 +25,6 @@ jobs:
 
       - run: bun install
       - run: bunx biome format src test package.json tsconfig.json tsconfig.lib.json biome.json
-      - run: bunx tsc --noEmit -p tsconfig.json
       - run: bun run build
+      - run: bunx tsc --noEmit -p tsconfig.json
       - run: bun test
